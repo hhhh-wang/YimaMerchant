@@ -263,27 +263,35 @@ insert into sys_dict_data values(2072, 3,  '商家已拒绝', '3', 'hotel_refund
 delete from sys_menu where perms like 'hotel:%';
 delete from sys_menu where path in ('hotel', 'hotelInfo', 'hotelRoomType', 'hotelInventory', 'hotelRefund');
 
-insert into sys_menu values('2000', '酒店管理', '0', '6', 'hotel', null, '', 1, 0, 'M', '0', '0', '', 'guide', 'admin', sysdate(), '', null, '酒店管理目录');
-insert into sys_menu values('2001', '酒店信息', '2000', '1', 'hotelInfo', 'hotel/info/index', '', 1, 0, 'C', '0', '0', 'hotel:info:list', 'build', 'admin', sysdate(), '', null, '酒店信息菜单');
-insert into sys_menu values('2002', '房型管理', '2000', '2', 'hotelRoomType', 'hotel/roomType/index', '', 1, 0, 'C', '0', '0', 'hotel:roomType:list', 'tree', 'admin', sysdate(), '', null, '房型管理菜单');
-insert into sys_menu values('2003', '库存价格管理', '2000', '3', 'hotelInventory', 'hotel/inventory/index', '', 1, 0, 'C', '0', '0', 'hotel:inventory:list', 'shopping', 'admin', sysdate(), '', null, '库存价格管理菜单');
-insert into sys_menu values('2004', '酒店退款', '2000', '4', 'hotelRefund', 'hotel/refund/index', '', 1, 0, 'C', '0', '0', 'hotel:refund:list', 'money', 'admin', sysdate(), '', null, '酒店退款菜单');
+insert into sys_menu values('2000', '酒店管理', '0', '5', 'hotel', null, '', '', 1, 0, 'M', '0', '0', '', 'guide', 'admin', sysdate(), '', null, '酒店管理目录');
+insert into sys_menu values('2001', '酒店信息', '2000', '1', 'hotelInfo', 'hotel/info/index', '', '', 1, 0, 'C', '0', '0', 'hotel:info:list', 'build', 'admin', sysdate(), '', null, '酒店信息菜单');
+insert into sys_menu values('2002', '房型管理', '2000', '2', 'hotelRoomType', 'hotel/roomType/index', '', '', 1, 0, 'C', '0', '0', 'hotel:roomType:list', 'tree', 'admin', sysdate(), '', null, '房型管理菜单');
+insert into sys_menu values('2003', '库存价格管理', '2000', '3', 'hotelInventory', 'hotel/inventory/index', '', '', 1, 0, 'C', '0', '0', 'hotel:inventory:list', 'shopping', 'admin', sysdate(), '', null, '库存价格管理菜单');
+insert into sys_menu values('2004', '酒店退款', '2000', '4', 'hotelRefund', 'hotel/refund/index', '', '', 1, 0, 'C', '0', '0', 'hotel:refund:list', 'money', 'admin', sysdate(), '', null, '酒店退款菜单');
 
-insert into sys_menu values('2101', '酒店信息查询', '2001', '1', '#', '', '', 1, 0, 'F', '0', '0', 'hotel:info:query', '#', 'admin', sysdate(), '', null, '');
-insert into sys_menu values('2102', '酒店信息新增', '2001', '2', '#', '', '', 1, 0, 'F', '0', '0', 'hotel:info:add', '#', 'admin', sysdate(), '', null, '');
-insert into sys_menu values('2103', '酒店信息修改', '2001', '3', '#', '', '', 1, 0, 'F', '0', '0', 'hotel:info:edit', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2101', '酒店信息查询', '2001', '1', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:info:query', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2102', '酒店信息新增', '2001', '2', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:info:add', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2103', '酒店信息修改', '2001', '3', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:info:edit', '#', 'admin', sysdate(), '', null, '');
 
-insert into sys_menu values('2201', '房型查询', '2002', '1', '#', '', '', 1, 0, 'F', '0', '0', 'hotel:roomType:query', '#', 'admin', sysdate(), '', null, '');
-insert into sys_menu values('2202', '房型新增', '2002', '2', '#', '', '', 1, 0, 'F', '0', '0', 'hotel:roomType:add', '#', 'admin', sysdate(), '', null, '');
-insert into sys_menu values('2203', '房型修改', '2002', '3', '#', '', '', 1, 0, 'F', '0', '0', 'hotel:roomType:edit', '#', 'admin', sysdate(), '', null, '');
-insert into sys_menu values('2204', '房型删除', '2002', '4', '#', '', '', 1, 0, 'F', '0', '0', 'hotel:roomType:remove', '#', 'admin', sysdate(), '', null, '');
-insert into sys_menu values('2205', '房型上下架', '2002', '5', '#', '', '', 1, 0, 'F', '0', '0', 'hotel:roomType:changeStatus', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2201', '房型查询', '2002', '1', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:roomType:query', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2202', '房型新增', '2002', '2', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:roomType:add', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2203', '房型修改', '2002', '3', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:roomType:edit', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2204', '房型删除', '2002', '4', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:roomType:remove', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2205', '房型上下架', '2002', '5', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:roomType:changeStatus', '#', 'admin', sysdate(), '', null, '');
 
-insert into sys_menu values('2301', '库存价格查询', '2003', '1', '#', '', '', 1, 0, 'F', '0', '0', 'hotel:inventory:query', '#', 'admin', sysdate(), '', null, '');
-insert into sys_menu values('2302', '库存价格修改', '2003', '2', '#', '', '', 1, 0, 'F', '0', '0', 'hotel:inventory:edit', '#', 'admin', sysdate(), '', null, '');
-insert into sys_menu values('2303', '库存价格批量修改', '2003', '3', '#', '', '', 1, 0, 'F', '0', '0', 'hotel:inventory:batchEdit', '#', 'admin', sysdate(), '', null, '');
-insert into sys_menu values('2304', '库存价格上下架', '2003', '4', '#', '', '', 1, 0, 'F', '0', '0', 'hotel:inventory:changeStatus', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2301', '库存价格查询', '2003', '1', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:inventory:query', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2302', '库存价格修改', '2003', '2', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:inventory:edit', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2303', '库存价格批量修改', '2003', '3', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:inventory:batchEdit', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2304', '库存价格上下架', '2003', '4', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:inventory:changeStatus', '#', 'admin', sysdate(), '', null, '');
 
-insert into sys_menu values('2401', '退款查询', '2004', '1', '#', '', '', 1, 0, 'F', '0', '0', 'hotel:refund:query', '#', 'admin', sysdate(), '', null, '');
-insert into sys_menu values('2402', '退款审核', '2004', '2', '#', '', '', 1, 0, 'F', '0', '0', 'hotel:refund:audit', '#', 'admin', sysdate(), '', null, '');
-insert into sys_menu values('2403', '退款详情', '2004', '3', '#', '', '', 1, 0, 'F', '0', '0', 'hotel:refund:detail', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2401', '退款查询', '2004', '1', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:refund:query', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2402', '退款审核', '2004', '2', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:refund:audit', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2403', '退款详情', '2004', '3', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:refund:detail', '#', 'admin', sysdate(), '', null, '');
+
+
+
+
+
+
+
+
