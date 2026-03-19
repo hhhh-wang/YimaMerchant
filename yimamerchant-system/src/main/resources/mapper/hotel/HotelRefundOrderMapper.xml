@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yimamerchant.system.mapper.hotel.HotelRefundOrderMapper">
+
+    <resultMap id="HotelRefundVOResult" type="com.yimamerchant.system.domain.hotel.vo.HotelRefundVO">
+        <id property="id" column="id"/>
+        <result property="refundNo" column="refund_no"/>
+        <result property="orderId" column="order_id"/>
+        <result property="orderNo" column="order_no"/>
+        <result property="roomTypeId" column="room_type_id"/>
+        <result property="roomTypeName" column="room_type_name"/>
+        <result property="guestName" column="guest_name"/>
+        <result property="guestPhone" column="guest_phone"/>
+        <result property="checkInDate" column="check_in_date_str"/>
+        <result property="checkOutDate" column="check_out_date_str"/>
+        <result property="orderAmount" column="order_amount"/>
+        <result property="applyRefundAmount" column="apply_refund_amount"/>
+        <result property="refundStatus" column="refund_status"/>
+        <result property="createTime" column="create_time"/>
+        <result property="auditTime" column="audit_time"/>
+    </resultMap>
+
+    <resultMap id="HotelRefundDetailVOResult" type="com.yimamerchant.system.domain.hotel.vo.HotelRefundDetailVO">
+        <id property="id" column="id"/>
+        <result property="refundNo" column="refund_no"/>
+        <result property="orderId" column="order_id"/>
+        <result property="orderNo" column="order_no"/>
+        <result property="roomTypeId" column="room_type_id"/>
+        <result property="roomTypeName" column="room_type_name"/>
+        <result property="guestName" column="guest_name"/>
+        <result property="guestPhone" column="guest_phone"/>
+        <result property="checkInDate" column="check_in_date_str"/>
+        <result property="checkOutDate" column="check_out_date_str"/>
+        <result property="orderAmount" column="order_amount"/>
+        <result property="applyRefundAmount" column="apply_refund_amount"/>
+        <result property="refundReason" column="refund_reason"/>
+        <result property="refundStatus" column="refund_status"/>
+        <result property="auditRemark" column="audit_remark"/>
+        <result property="auditBy" column="audit_by"/>
+        <result property="auditTime" column="audit_time"/>
+        <result property="cancelRule" column="cancel_rule"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <resultMap id="HotelRefundOrderResult" type="com.yimamerchant.system.domain.hotel.HotelRefundOrder">
+        <id property="id" column="id"/>
+        <result property="refundNo" column="refund_no"/>
+        <result property="orderId" column="order_id"/>
+        <result property="orderNo" column="order_no"/>
+        <result property="hotelId" column="hotel_id"/>
+        <result property="merchantId" column="merchant_id"/>
+        <result property="roomTypeId" column="room_type_id"/>
+        <result property="guestName" column="guest_name"/>
+        <result property="guestPhone" column="guest_phone"/>
+        <result property="checkInDate" column="check_in_date"/>
+        <result property="checkOutDate" column="check_out_date"/>
+        <result property="orderAmount" column="order_amount"/>
+        <result property="applyRefundAmount" column="apply_refund_amount"/>
+        <result property="refundReason" column="refund_reason"/>
+        <result property="refundStatus" column="refund_status"/>
+        <result property="auditRemark" column="audit_remark"/>
+        <result property="auditBy" column="audit_by"/>
+        <result property="auditTime" column="audit_time"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <!-- 8.1 分页查询退款列表 -->
+    <select id="selectRefundOrderList"
+            parameterType="com.yimamerchant.system.domain.hotel.query.HotelRefundQuery"
+            resultMap="HotelRefundVOResult">
+        SELECT
+            r.id,
+            r.refund_no,
+            r.order_id,
+            r.order_no,
+            r.room_type_id,
+            rt.room_type_name,
+            r.guest_name,
+            r.guest_phone,
+            DATE_FORMAT(r.check_in_date, '%Y-%m-%d') AS check_in_date_str,
+            DATE_FORMAT(r.check_out_date, '%Y-%m-%d') AS check_out_date_str,
+            r.order_amount,
+            r.apply_refund_amount,
+            r.refund_status,
+            r.create_time,
+            r.audit_time
+        FROM hotel_refund_order r
+        LEFT JOIN hotel_room_type rt
+            ON r.room_type_id = rt.id
+           AND rt.del_flag = '0'
+        WHERE r.merchant_id = #{merchantId}
+        <if test="orderNo != null and orderNo != ''">
+            AND r.order_no LIKE CONCAT('%', #{orderNo}, '%')
+        </if>
+        <if test="refundNo != null and refundNo != ''">
+            AND r.refund_no LIKE CONCAT('%', #{refundNo}, '%')
+        </if>
+        <if test="roomTypeName != null and roomTypeName != ''">
+            AND rt.room_type_name LIKE CONCAT('%', #{roomTypeName}, '%')
+        </if>
+        <if test="refundStatus != null and refundStatus != ''">
+            AND r.refund_status = #{refundStatus}
+        </if>
+        <if test="beginApplyTime != null">
+            AND r.create_time &gt;= #{beginApplyTime}
+        </if>
+        <if test="endApplyTime != null">
+            AND r.create_time &lt;= #{endApplyTime}
+        </if>
+        <if test="beginCheckInDate != null">
+            AND r.check_in_date &gt;= #{beginCheckInDate}
+        </if>
+        <if test="endCheckInDate != null">
+            AND r.check_in_date &lt;= #{endCheckInDate}
+        </if>
+        ORDER BY r.create_time DESC, r.id DESC
+    </select>
+
+    <!-- 8.2 查询退款详情 -->
+    <select id="selectRefundDetailById"
+            resultMap="HotelRefundDetailVOResult">
+        SELECT
+            r.id,
+            r.refund_no,
+            r.order_id,
+            r.order_no,
+            r.room_type_id,
+            rt.room_type_name,
+            r.guest_name,
+            r.guest_phone,
+            DATE_FORMAT(r.check_in_date, '%Y-%m-%d') AS check_in_date_str,
+            DATE_FORMAT(r.check_out_date, '%Y-%m-%d') AS check_out_date_str,
+            r.order_amount,
+            r.apply_refund_amount,
+            r.refund_reason,
+            r.refund_status,
+            r.audit_remark,
+            r.audit_by,
+            r.audit_time,
+            hi.cancel_rule AS cancel_rule,
+            r.create_time
+        FROM hotel_refund_order r
+        LEFT JOIN hotel_room_type rt
+            ON r.room_type_id = rt.id
+           AND rt.del_flag = '0'
+        LEFT JOIN hotel_info hi
+            ON r.hotel_id = hi.id
+        WHERE r.id = #{id}
+          AND r.merchant_id = #{merchantId}
+        LIMIT 1
+    </select>
+
+    <!-- 审核使用：按商家隔离查询退款单 -->
+    <select id="selectRefundOrderByIdForAudit"
+            resultMap="HotelRefundOrderResult">
+        SELECT
+            r.id,
+            r.refund_no,
+            r.order_id,
+            r.order_no,
+            r.hotel_id,
+            r.merchant_id,
+            r.room_type_id,
+            r.guest_name,
+            r.guest_phone,
+            r.check_in_date,
+            r.check_out_date,
+            r.order_amount,
+            r.apply_refund_amount,
+            r.refund_reason,
+            r.refund_status,
+            r.audit_remark,
+            r.audit_by,
+            r.audit_time,
+            r.create_time,
+            r.update_time
+        FROM hotel_refund_order r
+        WHERE r.id = #{id}
+          AND r.merchant_id = #{merchantId}
+        LIMIT 1
+    </select>
+
+    <!-- 8.3 同意退款 -->
+    <update id="approveRefund" parameterType="com.yimamerchant.system.domain.hotel.HotelRefundOrder">
+        UPDATE hotel_refund_order
+        SET refund_status = '2',
+            audit_remark = #{auditRemark},
+            audit_by = #{auditBy},
+            audit_time = sysdate(),
+            update_time = sysdate()
+        WHERE id = #{id}
+          AND merchant_id = #{merchantId}
+          AND refund_status = '1'
+    </update>
+
+    <!-- 8.4 拒绝退款 -->
+    <update id="rejectRefund" parameterType="com.yimamerchant.system.domain.hotel.HotelRefundOrder">
+        UPDATE hotel_refund_order
+        SET refund_status = '3',
+            audit_remark = #{auditRemark},
+            audit_by = #{auditBy},
+            audit_time = sysdate(),
+            update_time = sysdate()
+        WHERE id = #{id}
+          AND merchant_id = #{merchantId}
+          AND refund_status = '1'
+    </update>
+
+</mapper>
+
