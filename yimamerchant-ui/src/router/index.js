@@ -92,6 +92,21 @@ export const constantRoutes = [
 
 // 动态路由，基于用户权限动态去加载
 export const dynamicRoutes = [
+  // 酒店信息（隐藏表单页）
+  {
+    path: '/hotel',
+    component: Layout,
+    hidden: true,
+    permissions: ['hotel:info:edit'],
+    children: [
+      {
+        path: 'info/data',
+        component: () => import('@/views/hotel/info/data'),
+        name: 'HotelInfoData',
+        meta: { title: '酒店信息维护', activeMenu: '/hotelInfo' }
+      }
+    ]
+  },
   {
     path: '/system/user-auth',
     component: Layout,
