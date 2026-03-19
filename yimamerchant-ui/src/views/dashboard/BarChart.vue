@@ -62,7 +62,7 @@ export default {
         },
         xAxis: [{
           type: 'category',
-          data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+          data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'], // 中文显示
           axisTick: {
             alignWithLabel: true
           }
@@ -73,30 +73,35 @@ export default {
             show: false
           }
         }],
-        series: [{
-          name: 'pageA',
-          type: 'bar',
-          stack: 'vistors',
-          barWidth: '60%',
-          data: [79, 52, 200, 334, 390, 330, 220],
-          animationDuration
-        }, {
-          name: 'pageB',
-          type: 'bar',
-          stack: 'vistors',
-          barWidth: '60%',
-          data: [80, 52, 200, 334, 390, 330, 220],
-          animationDuration
-        }, {
-          name: 'pageC',
-          type: 'bar',
-          stack: 'vistors',
-          barWidth: '60%',
-          data: [30, 52, 200, 334, 390, 330, 220],
-          animationDuration
-        }]
+        series: [
+          {
+            name: '餐饮', // 原 pageA
+            type: 'bar',
+            stack: 'visitors',
+            barWidth: '60%',
+            data: [79, 52, 200, 334, 390, 330, 220],
+            animationDuration: 1000
+          },
+          {
+            name: '美容', // 原 pageB
+            type: 'bar',
+            stack: 'visitors',
+            barWidth: '60%',
+            data: [80, 52, 200, 334, 390, 330, 220],
+            animationDuration: 1000
+          },
+          {
+            name: '健身', // 原 pageC
+            type: 'bar',
+            stack: 'visitors',
+            barWidth: '60%',
+            data: [30, 52, 200, 334, 390, 330, 220],
+            animationDuration: 1000
+          }
+        ]
       })
     }
+
   }
 }
 </script>
