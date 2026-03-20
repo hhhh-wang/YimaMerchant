@@ -6,5 +6,4 @@ spring:
     include: druid-dev
     #生产环境配置
 #     active: prod
-#
 #     include: druid-prod
