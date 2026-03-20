@@ -385,3 +385,8 @@ insert into sys_dict_data values(69, 3, '商家已拒绝', '3', 'hotel_refund_st
 insert into sys_dict_data values(70, 4, '退款处理中预留', '4', 'hotel_refund_status', '', '', 'N', '0', 'admin', sysdate(), '', null, '退款处理中预留');
 insert into sys_dict_data values(71, 5, '退款成功预留', '5', 'hotel_refund_status', '', '', 'N', '0', 'admin', sysdate(), '', null, '退款成功预留');
 insert into sys_dict_data values(72, 6, '退款失败预留', '6', 'hotel_refund_status', '', '', 'N', '0', 'admin', sysdate(), '', null, '退款失败预留');
+
+
+
+
+
