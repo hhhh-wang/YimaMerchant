@@ -2,27 +2,27 @@
 
 ## 1. 文档说明
 
-本文档基于 [`plans/hotel-management-plan.md`](plans/hotel-management-plan.md) 的业务方案，进一步细化为可执行的技术设计文档，面向当前若依前后端分离项目落地，覆盖以下内容：
+本文档基于 [`plans/hotel-management-plan.md`](plans/hotel-management-plan.md) 的最新业务方案重构，进一步细化为可执行的技术设计文档，面向若依前后端分离项目落地，覆盖以下内容：
 
 - 前端页面与交互设计
-- 后端接口设计
-- 数据库表设计与建表建议
+- 后端分层与接口实现建议
+- 数据库表设计与落库建议
 - 若依权限、字典、菜单与模块落地建议
-- 第一阶段实现边界与第二阶段预留说明
+- 一期实现边界与二期扩展预留
 
-当前项目结构已经具备典型若依前后端分离基础：
+本次技术设计重点与管理方案保持一致：
 
-- 前端目录：[`yimamerchant-ui/src`](yimamerchant-ui/src)
-- 后端管理端：[`yimamerchant-admin`](yimamerchant-admin)
-- 后端业务模块：[`yimamerchant-system/src/main/java/com/yimamerchant/system`](yimamerchant-system/src/main/java/com/yimamerchant/system)
-- SQL目录：[`sql`](sql)
+- 退款能力从独立菜单调整为酒店订单内的售后处理能力
+- 酒店配置页统一承载基础信息、佣金模式、专属 BD、BD 电话、退款规则
+- 增加更换所属 BD 独立能力，支持平台侧交接操作
+- 保持单店商家模型，但所有核心数据结构保留扩展字段
 
-本文档默认技术前提如下：
+当前项目技术前提如下：
 
-- 前端采用 Vue2 + Element UI + 若依标准页面模式
 - 后端采用 Spring Boot + Spring Security + MyBatis
-- 业务数据落在 [`yimamerchant-system`](yimamerchant-system) 模块
-- 控制器落在 [`yimamerchant-admin`](yimamerchant-admin) 管理端模块
+- 控制器放在管理端模块
+- 业务数据建议落在系统业务模块
+- 菜单、权限、字典沿用若依标准能力
 
 ---
 
@@ -30,14 +30,16 @@
 
 ### 2.1 本期实现目标
 
-一期目标为把酒店商家端的最小经营闭环跑通，包含：
+一期目标为跑通酒店商家端最小经营闭环，包含：
 
-- 酒店信息维护
+- 酒店信息与经营配置维护
 - 房型档案维护
 - 房型设施绑定
 - 房型默认价格与默认库存管理
-- 房型上下架
-- 酒店退款列表与审核处理
+- 房型上下架与可预订控制
+- 酒店订单查询
+- 订单内退款审核与金额处理
+- 更换所属 BD 与变更记录查询
 
 ### 2.2 本期不做
 
@@ -48,30 +50,57 @@
 - 平台复核退款
 - 自动打款退款
 - 渠道分销同步
-- 财务对账中心
+- 财务结算中心
+- BD 绩效结算
+- BD 交接审批流
 
 ### 2.3 技术实现原则
 
-- 单店模型，但所有核心表保留 `merchant_id` 与 `hotel_id`
-- 列表能力优先采用若依标准分页接口
-- 操作能力优先采用单表单、弹窗、详情页组合
+- 单店模型，但核心表统一保留 `merchant_id` 与 `hotel_id`
+- 页面能力优先采用若依标准列表、表单、详情抽屉模式
 - 状态字段按业务语义分离，不做混合复用
+- 退款入口统一放在订单模块，退款单仍独立存储
+- 酒店配置项统一归并，避免多菜单重复维护
+- 更换所属 BD 由平台侧操作，商家侧只读展示当前 BD 信息
 - 第一阶段以默认库存、默认价格驱动经营管理
 - 预留按日房态库存表，不强制一期启用
 
 ---
 
-## 3. 若依落地模块设计
+## 3. 总体架构设计
 
-## 3.1 后端分层建议
+## 3.1 业务模块划分
 
-建议新增酒店业务包，统一归入 [`yimamerchant-system/src/main/java/com/yimamerchant/system`](yimamerchant-system/src/main/java/com/yimamerchant/system) 下：
+建议按以下业务域拆分：
+
+- 酒店配置域
+- 房型管理域
+- 经营库存域
+- 订单售后域
+- BD 归属域
+
+### 3.1.1 业务职责说明
+
+| 业务域 | 职责 |
+|---|---|
+| 酒店配置域 | 维护酒店资料、佣金模式、BD 信息、退款规则 |
+| 房型管理域 | 维护房型档案、房型设施、上下架完整性 |
+| 经营库存域 | 维护默认价格、默认库存、预订开关 |
+| 订单售后域 | 查询订单、查询退款记录、执行退款审核 |
+| BD 归属域 | 平台侧更换酒店所属 BD、记录交接轨迹 |
+
+## 3.2 技术分层建议
+
+建议新增酒店业务包，统一归入业务模块：
 
 ```text
 com.yimamerchant.system.domain.hotel
 com.yimamerchant.system.mapper.hotel
 com.yimamerchant.system.service.hotel
 com.yimamerchant.system.service.hotel.impl
+com.yimamerchant.system.domain.vo.hotel
+com.yimamerchant.system.domain.dto.hotel
+com.yimamerchant.system.domain.query.hotel
 ```
 
 管理端控制器建议放在：
@@ -80,7 +109,7 @@ com.yimamerchant.system.service.hotel.impl
 com.yimamerchant.web.controller.hotel
 ```
 
-### 3.1.1 推荐类清单
+### 3.2.1 推荐类清单
 
 #### Domain
 
@@ -88,19 +117,38 @@ com.yimamerchant.web.controller.hotel
 - `HotelRoomType`
 - `HotelFacility`
 - `HotelRoomTypeFacilityRel`
-- `HotelInventory`
+- `HotelRoomInventory`
+- `HotelOrder`
 - `HotelRefundOrder`
+- `HotelBdChangeRecord`
 
 #### Query / DTO / VO
 
-- `HotelRoomTypeQuery`
-- `HotelInventoryQuery`
-- `HotelRefundQuery`
-- `HotelRoomTypeForm`
 - `HotelInfoForm`
-- `HotelRefundAuditForm`
+- `HotelInfoVO`
+- `HotelConfigSummaryVO`
+- `HotelRoomTypeQuery`
+- `HotelRoomTypeForm`
 - `HotelRoomTypeVO`
-- `HotelRefundDetailVO`
+- `HotelRoomTypeDetailVO`
+- `HotelRoomTypeCheckVO`
+- `HotelFacilityQuery`
+- `HotelRoomTypeFacilityForm`
+- `HotelInventoryQuery`
+- `HotelInventoryPriceForm`
+- `HotelInventoryStockForm`
+- `HotelInventoryBatchForm`
+- `HotelInventoryBookableForm`
+- `HotelOrderQuery`
+- `HotelOrderVO`
+- `HotelOrderDetailVO`
+- `HotelRefundApproveForm`
+- `HotelRefundRejectForm`
+- `HotelRefundRecordVO`
+- `HotelBdChangeQuery`
+- `HotelBdChangeForm`
+- `HotelBdBatchChangeForm`
+- `HotelBdChangeRecordVO`
 
 #### Service
 
@@ -108,7 +156,9 @@ com.yimamerchant.web.controller.hotel
 - `IHotelRoomTypeService`
 - `IHotelFacilityService`
 - `IHotelInventoryService`
+- `IHotelOrderService`
 - `IHotelRefundService`
+- `IHotelBdChangeService`
 
 #### Controller
 
@@ -116,13 +166,29 @@ com.yimamerchant.web.controller.hotel
 - `HotelRoomTypeController`
 - `HotelFacilityController`
 - `HotelInventoryController`
+- `HotelOrderController`
 - `HotelRefundController`
+- `HotelBdChangeController`
+
+### 3.2.2 控制器职责建议
+
+| 控制器 | 职责 |
+|---|---|
+| `HotelInfoController` | 酒店信息与经营配置维护 |
+| `HotelRoomTypeController` | 房型档案增删改查与上下架 |
+| `HotelFacilityController` | 设施查询与房型设施绑定 |
+| `HotelInventoryController` | 默认价格库存、可预订状态维护 |
+| `HotelOrderController` | 订单列表、订单详情、退款记录聚合展示 |
+| `HotelRefundController` | 退款审核执行能力，可作为订单售后子控制器 |
+| `HotelBdChangeController` | 平台侧酒店所属 BD 调整与变更记录 |
 
 ---
 
-## 3.2 前端目录建议
+## 4. 前端页面技术设计
 
-建议在 [`yimamerchant-ui/src/views`](yimamerchant-ui/src/views) 下新建业务目录：
+## 4.1 页面目录建议
+
+建议前端目录结构如下：
 
 ```text
 yimamerchant-ui/src/views/hotel/
@@ -132,11 +198,13 @@ yimamerchant-ui/src/views/hotel/
 │  └─ index.vue
 ├─ inventory/
 │  └─ index.vue
-└─ refund/
+├─ order/
+│  └─ index.vue
+└─ bdChange/
    └─ index.vue
 ```
 
-接口定义建议放在 [`yimamerchant-ui/src/api`](yimamerchant-ui/src/api) 下：
+接口定义建议放在：
 
 ```text
 yimamerchant-ui/src/api/hotel/
@@ -144,29 +212,28 @@ yimamerchant-ui/src/api/hotel/
 ├─ roomType.js
 ├─ facility.js
 ├─ inventory.js
-└─ refund.js
+├─ order.js
+└─ bdChange.js
 ```
 
----
+## 4.2 酒店信息与经营配置页
 
-## 4. 前端页面技术设计
+页面文件建议：`yimamerchant-ui/src/views/hotel/info/index.vue`
 
-## 4.1 酒店信息页
+### 4.2.1 页面定位
 
-页面文件建议：[`yimamerchant-ui/src/views/hotel/info/index.vue`](yimamerchant-ui/src/views/hotel/info/index.vue)
+单表单页面，用于维护当前商家酒店基础资料与经营配置。
 
-### 4.1.1 页面定位
+### 4.2.2 页面布局建议
 
-单表单页面，用于商家维护当前酒店基础资料。
-
-### 4.1.2 页面布局建议
-
-- 顶部：页面标题 + 保存按钮
+- 顶部：页面标题、保存按钮、配置摘要
 - 主体：基础信息表单
-- 图片区域：酒店封面图上传、轮播图上传
-- 文本区域：酒店简介、预订须知、取消规则、开票说明、停车说明
+- 中部：佣金配置板块
+- 中部：BD 信息板块
+- 中部：退款规则板块
+- 底部：酒店简介、预订须知、开票说明、停车说明
 
-### 4.1.3 表单字段
+### 4.2.3 表单字段
 
 | 字段 | 组件建议 | 是否必填 | 说明 |
 |---|---|---|---|
@@ -180,183 +247,109 @@ yimamerchant-ui/src/api/hotel/
 | latitude | `el-input-number` | 否 | 纬度 |
 | checkInTime | 时间选择 | 是 | 入住时间 |
 | checkOutTime | 时间选择 | 是 | 离店时间 |
+| status | `el-radio-group` | 是 | 酒店状态 |
+| commissionMode | `el-radio-group` | 是 | 佣金模式 |
+| commissionValue | `el-input-number` | 是 | 佣金值 |
+| bdUserId | `el-select` | 是 | 专属 BD |
+| bdPhone | `el-input` | 是 | BD 电话 |
+| refundRuleType | `el-radio-group` | 是 | 退款规则 |
+| refundDeadlineDesc | `el-input` | 条件必填 | 限时退款条件 |
+| refundRuleDesc | `el-input type=textarea` | 否 | 退款规则说明 |
 | intro | `el-input type=textarea` | 否 | 酒店简介 |
 | bookingNotice | `el-input type=textarea` | 否 | 预订须知 |
-| cancelRule | `el-input type=textarea` | 否 | 取消规则 |
 | invoiceDesc | `el-input type=textarea` | 否 | 开票说明 |
 | parkingDesc | `el-input type=textarea` | 否 | 停车说明 |
-| status | `el-radio-group` | 是 | 酒店状态 |
 
-### 4.1.4 交互规则
+### 4.2.4 交互规则
 
-- 页面初始化调用查询接口获取当前商家酒店信息
-- 若不存在数据，页面以新增模式展示
-- 若存在数据，页面以编辑模式展示
-- 点击保存时先执行前端校验，再提交后台
-- 封面图建议限制一张，轮播图建议限制最多 9 张
+- 页面初始化查询当前商家酒店信息
+- 若不存在数据，页面按新增模式渲染
+- 若已存在数据，页面按编辑模式渲染
+- 佣金模式切换时联动显示字段说明
+- 退款规则切换为限时退时显示限时说明输入框
+- 商家侧 BD 字段建议可见但默认只读，若业务允许商家维护则开放编辑
 
-### 4.1.5 前端校验规则
+## 4.3 房型管理页
 
-- 酒店名称不能为空，长度建议不超过 50
-- 联系电话不能为空，格式进行手机号或座机校验
-- 省市区不能为空
-- 详细地址不能为空，长度建议不超过 200
-- 入住时间、离店时间不能为空
-
----
-
-## 4.2 房型管理页
-
-页面文件建议：[`yimamerchant-ui/src/views/hotel/roomType/index.vue`](yimamerchant-ui/src/views/hotel/roomType/index.vue)
-
-### 4.2.1 页面定位
-
-列表页 + 新增编辑弹窗，用于维护房型基础档案与设施绑定。
-
-### 4.2.2 页面结构
-
-- 查询区域
-- 房型列表表格
-- 新增编辑弹窗
-- 详情弹窗 可选
-- 设施勾选区域 可置于弹窗中 tabs 内
-
-### 4.2.3 查询条件
-
-| 字段 | 组件建议 | 说明 |
-|---|---|---|
-| roomTypeName | `el-input` | 房型名称 |
-| configStatus | `el-select` | 配置状态 |
-| saleStatus | `el-select` | 上架状态 |
-
-### 4.2.4 列表字段
-
-- 房型名称
-- 房型编码
-- 房型图片首图
-- 床型
-- 可住人数
-- 默认价格
-- 默认库存
-- 配置状态
-- 上架状态
-- 更新时间
-- 操作列
-
-### 4.2.5 操作按钮
-
-- 新增
-- 编辑
-- 详情
-- 启用 / 停用
-- 删除
-- 上架 / 下架
-
-### 4.2.6 新增编辑表单字段
-
-| 字段 | 组件建议 | 是否必填 | 说明 |
-|---|---|---|---|
-| roomTypeName | `el-input` | 是 | 房型名称 |
-| roomTypeCode | `el-input` | 是 | 房型编码 |
-| roomImages | 多图上传 | 是 | 房型图片 |
-| bedType | `el-select` | 是 | 床型字典 |
-| peopleLimit | `el-input-number` | 是 | 可住人数 |
-| area | `el-input` | 否 | 面积 |
-| floorDesc | `el-input` | 否 | 楼层描述 |
-| windowType | `el-select` | 否 | 窗型字典 |
-| breakfastCount | `el-input-number` | 否 | 早餐数 |
-| extraBedFlag | `el-radio-group` | 否 | 是否可加床 |
-| description | `el-input type=textarea` | 否 | 房型描述 |
-| basePrice | `el-input-number` | 否 | 默认价格 |
-| baseStock | `el-input-number` | 否 | 默认库存 |
-| configStatus | `el-radio-group` | 是 | 启用停用 |
-| bookableFlag | `el-radio-group` | 是 | 是否可预订 |
-| sortNum | `el-input-number` | 否 | 排序 |
-| remark | `el-input type=textarea` | 否 | 备注 |
-| facilityIds | 复选框组 | 否 | 设施绑定 |
-
-### 4.2.7 交互规则
-
-- 新增与编辑共用弹窗
-- 编辑时需带出已绑定设施列表
-- 删除前需弹出确认框
-- 对已有关联经营数据或订单的房型，删除按钮置灰或后端返回不可删除提示
-- 上架前先调用后端完整性校验，也可以由更新接口统一校验
-
----
-
-## 4.3 库存价格管理页
-
-页面文件建议：[`yimamerchant-ui/src/views/hotel/inventory/index.vue`](yimamerchant-ui/src/views/hotel/inventory/index.vue)
+页面文件建议：`yimamerchant-ui/src/views/hotel/roomType/index.vue`
 
 ### 4.3.1 页面定位
 
-一期先做房型经营列表页，以默认价格和默认库存为核心。
+列表页加新增编辑弹窗，用于维护房型基础档案与设施绑定。
 
 ### 4.3.2 页面结构
 
 - 查询区域
+- 房型列表表格
+- 新增编辑弹窗
+- 详情抽屉
+- 设施勾选区域
+
+### 4.3.3 页面操作
+
+- 新增
+- 编辑
+- 查看详情
+- 启用停用
+- 删除
+- 上架下架
+- 校验完整性
+
+### 4.3.4 关键交互规则
+
+- 新增与编辑共用弹窗
+- 编辑时带出已绑定设施
+- 上架前触发后端完整性校验
+- 已有关联订单或经营数据时删除按钮置灰或后端拦截
+
+## 4.4 库存价格管理页
+
+页面文件建议：`yimamerchant-ui/src/views/hotel/inventory/index.vue`
+
+### 4.4.1 页面定位
+
+一期采用房型经营列表页，以默认价格和默认库存为核心。
+
+### 4.4.2 页面结构
+
+- 查询区域
 - 批量操作区
 - 列表表格
-- 单行快速编辑弹窗 可选
+- 单行快速编辑弹窗
 
-### 4.3.3 查询条件
-
-- 房型名称
-- 上架状态
-- 是否可预订
-
-### 4.3.4 列表字段
-
-- 房型名称
-- 销售价
-- 划线价
-- 默认库存
-- 已售数量 先预留，可默认显示 0 或从订单统计
-- 剩余可售 先由默认库存减已售计算
-- 是否可预订
-- 上架状态
-- 更新时间
-
-### 4.3.5 页面操作
+### 4.4.3 页面操作
 
 - 批量设置价格
 - 批量设置库存
 - 单行修改价格
 - 单行修改库存
-- 上架
-- 下架
-- 开启 / 关闭预订
+- 开启关闭预订
+- 跳转房型页执行上架下架
 
-### 4.3.6 交互规则
+### 4.4.4 关键交互规则
 
-- 支持多选房型后批量调整价格库存
-- 批量提交前需校验正数与金额精度
-- 上架前进行完整性校验
-- 下架无需完整性校验
+- 支持多选批量调价调库存
+- 批量提交前校验金额精度和库存合法性
+- 上架下架状态建议调用房型状态接口，避免状态维护分散
 
----
+## 4.5 酒店订单页
 
-## 4.4 酒店退款页
+页面文件建议：`yimamerchant-ui/src/views/hotel/order/index.vue`
 
-页面文件建议：[`yimamerchant-ui/src/views/hotel/refund/index.vue`](yimamerchant-ui/src/views/hotel/refund/index.vue)
+### 4.5.1 页面定位
 
-### 4.4.1 页面定位
+列表页加详情抽屉，用于商家查询订单并处理退款。
 
-列表页 + 详情弹窗，用于商家处理退款申请。
+### 4.5.2 页面结构
 
-### 4.4.2 查询条件
+- 查询区域
+- 订单列表表格
+- 订单详情抽屉
+- 退款记录区域
+- 退款审核弹窗
 
-- 订单编号
-- 退款单号
-- 房型名称
-- 退款状态
-- 申请时间范围
-- 入住日期范围
+### 4.5.3 列表字段建议
 
-### 4.4.3 列表字段
-
-- 退款单号
 - 订单编号
 - 入住人
 - 联系电话
@@ -364,57 +357,70 @@ yimamerchant-ui/src/api/hotel/
 - 入住日期
 - 离店日期
 - 订单金额
-- 申请退款金额
-- 退款状态
-- 申请时间
-- 处理时间
-- 操作
+- 实付金额
+- 已退款金额
+- 可退款金额
+- 订单状态
+- 售后状态
+- 支付时间
+- 操作列
 
-### 4.4.4 详情弹窗字段
+### 4.5.4 退款审核交互规则
 
-- 订单编号
-- 退款单号
-- 房型名称
-- 入住日期
-- 离店日期
-- 支付金额
-- 申请退款金额
-- 退款原因
-- 取消规则说明
-- 审核备注
-
-### 4.4.5 操作按钮
-
-- 查看详情
-- 同意退款
-- 拒绝退款
-
-### 4.4.6 交互规则
-
-- 仅待商家处理状态显示同意和拒绝按钮
+- 退款入口统一放在订单详情中
+- 详情中同时展示申请退款金额、酒店退款规则、当前可退款金额
+- 商家同意退款时必须录入实际退款金额
 - 拒绝退款时审核备注必填
-- 同意退款时可选填写审核备注
-- 审核成功后刷新列表并关闭详情弹窗
+- 退款提交成功后刷新订单详情与退款记录区
+
+## 4.6 更换所属 BD 页
+
+页面文件建议：`yimamerchant-ui/src/views/hotel/bdChange/index.vue`
+
+### 4.6.1 页面定位
+
+平台侧列表页，用于酒店归属快速交接。
+
+### 4.6.2 页面结构
+
+- 查询区域
+- 酒店归属表格
+- 批量操作工具栏
+- 更换弹窗
+- 变更记录弹窗
+
+### 4.6.3 页面操作
+
+- 查询酒店归属
+- 查询可选 BD
+- 单个更换所属 BD
+- 批量更换所属 BD
+- 查看历史变更记录
+
+### 4.6.4 关键交互规则
+
+- 更换所属 BD 前必须二次确认
+- 批量更换需展示影响酒店数量
+- 成功后刷新酒店归属列表与酒店配置摘要
 
 ---
 
 ## 5. 前端 API 文件设计
 
-建议按若依风格封装请求。
-
 ## 5.1 酒店信息接口文件
 
-文件：[`yimamerchant-ui/src/api/hotel/info.js`](yimamerchant-ui/src/api/hotel/info.js)
+文件：`yimamerchant-ui/src/api/hotel/info.js`
 
 建议方法：
 
 - `getHotelInfo()`
 - `saveHotelInfo(data)`
-- `updateHotelStatus(data)` 可选
+- `changeHotelStatus(data)`
+- `getHotelConfigSummary()`
 
 ## 5.2 房型接口文件
 
-文件：[`yimamerchant-ui/src/api/hotel/roomType.js`](yimamerchant-ui/src/api/hotel/roomType.js)
+文件：`yimamerchant-ui/src/api/hotel/roomType.js`
 
 建议方法：
 
@@ -423,12 +429,13 @@ yimamerchant-ui/src/api/hotel/
 - `addRoomType(data)`
 - `updateRoomType(data)`
 - `removeRoomType(id)`
-- `changeRoomTypeConfigStatus(id, configStatus)`
-- `changeRoomTypeSaleStatus(id, saleStatus)`
+- `changeRoomTypeConfigStatus(data)`
+- `changeRoomTypeSaleStatus(data)`
+- `checkRoomTypeComplete(id)`
 
 ## 5.3 设施接口文件
 
-文件：[`yimamerchant-ui/src/api/hotel/facility.js`](yimamerchant-ui/src/api/hotel/facility.js)
+文件：`yimamerchant-ui/src/api/hotel/facility.js`
 
 建议方法：
 
@@ -438,7 +445,7 @@ yimamerchant-ui/src/api/hotel/
 
 ## 5.4 库存价格接口文件
 
-文件：[`yimamerchant-ui/src/api/hotel/inventory.js`](yimamerchant-ui/src/api/hotel/inventory.js)
+文件：`yimamerchant-ui/src/api/hotel/inventory.js`
 
 建议方法：
 
@@ -447,651 +454,485 @@ yimamerchant-ui/src/api/hotel/
 - `updateBaseStock(data)`
 - `batchUpdateInventory(data)`
 - `changeBookableFlag(data)`
-- `changeSaleStatus(data)`
 
-## 5.5 退款接口文件
+## 5.5 酒店订单接口文件
 
-文件：[`yimamerchant-ui/src/api/hotel/refund.js`](yimamerchant-ui/src/api/hotel/refund.js)
+文件：`yimamerchant-ui/src/api/hotel/order.js`
 
 建议方法：
 
-- `listRefund(query)`
-- `getRefundDetail(id)`
+- `listOrder(query)`
+- `getOrderDetail(id)`
+- `listRefundRecords(orderId)`
+- `getRefundDetail(refundId)`
 - `approveRefund(data)`
 - `rejectRefund(data)`
 
----
+## 5.6 更换所属 BD 接口文件
 
-## 6. 后端接口设计
+文件：`yimamerchant-ui/src/api/hotel/bdChange.js`
 
-统一前缀建议为：
+建议方法：
 
-- `/hotel/info`
-- `/hotel/roomType`
-- `/hotel/facility`
-- `/hotel/inventory`
-- `/hotel/refund`
-
-返回格式遵循若依标准：
-
-- 列表：`TableDataInfo`
-- 明细 / 操作：`AjaxResult`
+- `listHotelBdRelation(query)`
+- `listBdOptions(query)`
+- `changeHotelBd(data)`
+- `batchChangeHotelBd(data)`
+- `listBdChangeRecord(query)`
 
 ---
 
-## 6.1 酒店信息接口
+## 6. 后端实现设计
 
-控制器建议：`HotelInfoController`
+## 6.1 数据隔离设计
 
-### 6.1.1 查询当前商家酒店信息
+### 6.1.1 商家侧数据隔离
 
-- 请求方式：`GET`
-- 请求路径：`/hotel/info/getInfo`
-- 权限：`hotel:info:query`
+商家侧所有查询和操作必须基于当前登录用户的商家身份进行数据隔离。
 
-响应示例：
+建议做法：
 
-```json
-{
-  "code": 200,
-  "msg": "操作成功",
-  "data": {
-    "id": 1,
-    "merchantId": 1001,
-    "hotelName": "云栖酒店",
-    "hotelCover": "...",
-    "hotelImages": "...",
-    "phone": "13800000000",
-    "provinceCode": "110000",
-    "cityCode": "110100",
-    "districtCode": "110101",
-    "address": "某街道88号",
-    "checkInTime": "14:00",
-    "checkOutTime": "12:00",
-    "intro": "...",
-    "bookingNotice": "...",
-    "cancelRule": "...",
-    "invoiceDesc": "...",
-    "parkingDesc": "...",
-    "status": "1"
-  }
-}
-```
+- 从登录态解析当前用户编号
+- 通过商家绑定关系解析 `merchantId`
+- 查询酒店、房型、订单、退款时统一带入 `merchantId`
+- 控制器层不信任前端传入的 `merchantId`
 
-### 6.1.2 保存酒店信息
+### 6.1.2 平台侧数据隔离
 
-- 请求方式：`POST`
-- 请求路径：`/hotel/info/save`
-- 权限：`hotel:info:edit`
+平台侧更换所属 BD 接口由平台角色访问。
 
-请求体字段：
+建议做法：
 
-- `hotelName`
-- `hotelCover`
-- `hotelImages`
-- `phone`
-- `provinceCode`
-- `cityCode`
-- `districtCode`
-- `address`
-- `longitude`
-- `latitude`
-- `checkInTime`
-- `checkOutTime`
-- `intro`
-- `bookingNotice`
-- `cancelRule`
-- `invoiceDesc`
-- `parkingDesc`
-- `status`
+- 使用角色和权限标识控制访问入口
+- 支持按酒店名称、商家编号、当前 BD 查询交接对象
+- 记录操作人、操作时间和变更原因
 
-### 6.1.3 实现建议
+## 6.2 事务边界设计
 
-- 当前商家有酒店则执行更新
-- 当前商家无酒店则执行新增
-- 不暴露商家侧按 ID 任意查询能力
+### 6.2.1 保存酒店信息事务
 
----
+涉及：
 
-## 6.2 房型管理接口
+- 保存酒店基础资料
+- 保存佣金模式与佣金值
+- 保存专属 BD 信息
+- 保存退款规则
 
-控制器建议：`HotelRoomTypeController`
+建议整体放入一个事务中执行。
 
-### 6.2.1 房型分页列表
+### 6.2.2 保存房型事务
 
-- 请求方式：`GET`
-- 路径：`/hotel/roomType/list`
-- 权限：`hotel:roomType:list`
+涉及：
 
-请求参数：
+- 保存房型主表
+- 保存房型设施绑定
 
-- `roomTypeName`
-- `configStatus`
-- `saleStatus`
-- `pageNum`
-- `pageSize`
+建议整体放入一个事务中执行，避免房型与设施数据不一致。
 
-### 6.2.2 查询房型详情
+### 6.2.3 退款审核事务
 
-- 请求方式：`GET`
-- 路径：`/hotel/roomType/{id}`
-- 权限：`hotel:roomType:detail`
+涉及：
 
-响应需包含：
+- 校验退款状态
+- 更新退款单状态
+- 更新订单已退款金额
+- 更新订单可退款金额
+- 更新订单售后状态
+- 写入审核人和审核时间
 
-- 房型基础信息
-- 已绑定设施 ID 集合
+退款审核必须使用事务，避免退款单与订单金额状态不一致。
 
-### 6.2.3 新增房型
+### 6.2.4 更换所属 BD 事务
 
-- 请求方式：`POST`
-- 路径：`/hotel/roomType`
-- 权限：`hotel:roomType:add`
+涉及：
 
-### 6.2.4 修改房型
+- 更新酒店表当前 BD 信息
+- 写入 BD 变更记录
 
-- 请求方式：`PUT`
-- 路径：`/hotel/roomType`
-- 权限：`hotel:roomType:edit`
+建议放入单事务执行，确保当前归属与历史轨迹一致。
 
-### 6.2.5 删除房型
+## 6.3 核心服务方法建议
 
-- 请求方式：`DELETE`
-- 路径：`/hotel/roomType/{id}`
-- 权限：`hotel:roomType:remove`
+### 6.3.1 酒店配置服务
 
-### 6.2.6 修改房型配置状态
+建议方法：
 
-- 请求方式：`PUT`
-- 路径：`/hotel/roomType/changeConfigStatus`
-- 权限：`hotel:roomType:enable`
+- `getCurrentHotelInfo()`
+- `saveHotelInfo(HotelInfoForm form)`
+- `changeHotelStatus(Long id, String status)`
+- `getHotelConfigSummary()`
 
-请求体：
+### 6.3.2 房型服务
 
-```json
-{
-  "id": 1,
-  "configStatus": "1"
-}
-```
+建议方法：
 
-### 6.2.7 房型上下架
+- `selectRoomTypePage(HotelRoomTypeQuery query)`
+- `selectRoomTypeDetail(Long id)`
+- `insertRoomType(HotelRoomTypeForm form)`
+- `updateRoomType(HotelRoomTypeForm form)`
+- `deleteRoomType(Long id)`
+- `changeConfigStatus(Long id, String configStatus)`
+- `changeSaleStatus(Long id, String saleStatus)`
+- `checkRoomTypeComplete(Long id)`
 
-- 请求方式：`PUT`
-- 路径：`/hotel/roomType/changeSaleStatus`
-- 权限：`hotel:roomType:putOn` 或 `hotel:roomType:putOff`
+### 6.3.3 库存服务
 
-请求体：
+建议方法：
 
-```json
-{
-  "id": 1,
-  "saleStatus": "1"
-}
-```
+- `selectInventoryPage(HotelInventoryQuery query)`
+- `updateBasePrice(HotelInventoryPriceForm form)`
+- `updateBaseStock(HotelInventoryStockForm form)`
+- `batchUpdateInventory(HotelInventoryBatchForm form)`
+- `changeBookableFlag(HotelInventoryBookableForm form)`
 
-### 6.2.8 后端校验建议
+### 6.3.4 订单售后服务
 
-- 酒店不存在时不允许新增房型
-- 房型名称同一酒店下唯一
-- 房型编码同一酒店下唯一
-- 上架前校验图片、价格、库存、配置状态
-- 已产生订单或经营数据的房型禁止物理删除
+建议方法：
+
+- `selectOrderPage(HotelOrderQuery query)`
+- `selectOrderDetail(Long id)`
+- `selectRefundRecords(Long orderId)`
+- `selectRefundDetail(Long refundId)`
+- `approveRefund(HotelRefundApproveForm form)`
+- `rejectRefund(HotelRefundRejectForm form)`
+
+### 6.3.5 BD 归属服务
+
+建议方法：
+
+- `selectHotelBdRelationPage(HotelBdChangeQuery query)`
+- `selectBdOptions(String keyword)`
+- `changeHotelBd(HotelBdChangeForm form)`
+- `batchChangeHotelBd(HotelBdBatchChangeForm form)`
+- `selectBdChangeRecordPage(HotelBdChangeQuery query)`
 
 ---
 
-## 6.3 设施接口
+## 7. 核心流程技术设计
 
-控制器建议：`HotelFacilityController`
+## 7.1 酒店配置保存流程
 
-### 6.3.1 设施列表
-
-- 请求方式：`GET`
-- 路径：`/hotel/facility/list`
-- 权限：`hotel:facility:list`
-
-请求参数：
-
-- `facilityType`
-- `status`
-
-### 6.3.2 查询房型设施
-
-- 请求方式：`GET`
-- 路径：`/hotel/facility/roomType/{roomTypeId}`
-- 权限：`hotel:facility:list`
-
-响应建议：
-
-- 设施清单
-- 当前房型已选设施 ID 列表
-
-### 6.3.3 保存房型设施
-
-- 请求方式：`POST`
-- 路径：`/hotel/facility/saveRoomTypeFacilities`
-- 权限：`hotel:facility:bind`
-
-请求体示例：
-
-```json
-{
-  "roomTypeId": 1,
-  "facilityIds": [1, 2, 5, 8]
-}
+```mermaid
+flowchart TD
+A[前端提交酒店配置表单] --> B[校验商家身份]
+B --> C[校验基础字段]
+C --> D[校验佣金与退款规则]
+D --> E[校验BD信息]
+E --> F[新增或更新hotel_info]
+F --> G[返回最新配置结果]
 ```
 
-### 6.3.4 实现建议
+### 技术说明
 
-- 采用先删后插方式维护房型设施关联
-- 保存前校验房型是否属于当前商家酒店
+- 酒店配置作为单表单入口统一提交
+- 若商家尚未创建酒店则执行新增，否则执行更新
+- BD 名称快照可由后端根据 `bdUserId` 自动回填
+
+## 7.2 房型上架流程
+
+```mermaid
+flowchart TD
+A[前端发起上架] --> B[查询房型]
+B --> C[执行完整性校验]
+C --> D{是否通过}
+D -->|否| E[返回缺失项]
+D -->|是| F[更新sale_status]
+F --> G[返回成功]
+```
+
+### 技术说明
+
+- 上架校验建议封装为独立方法
+- 缺失项返回前端用于友好提示
+- 库存页与房型页统一调用同一上架能力
+
+## 7.3 退款审核流程
+
+```mermaid
+flowchart TD
+A[商家在订单详情提交退款审核] --> B[查询退款单]
+B --> C[校验退款状态]
+C --> D[查询订单剩余可退款金额]
+D --> E{审核动作}
+E -->|同意| F[校验退款金额]
+F --> G[更新退款单状态]
+G --> H[更新订单金额与售后状态]
+E -->|拒绝| I[校验备注]
+I --> J[更新退款单状态]
+J --> K[更新订单售后状态]
+```
+
+### 技术说明
+
+- 审核动作必须保证幂等
+- 同意退款与拒绝退款共享状态前置校验
+- 已退款金额、可退款金额、售后状态要同步更新
+
+## 7.4 更换所属 BD 流程
+
+```mermaid
+flowchart TD
+A[平台选择酒店或批量对象] --> B[选择新BD]
+B --> C[校验BD有效性]
+C --> D[更新hotel_info当前BD]
+D --> E[写入hotel_bd_change_record]
+E --> F[返回处理结果]
+```
+
+### 技术说明
+
+- 单个更换与批量更换应复用同一核心服务逻辑
+- 批量处理建议逐条写入变更记录
+- 如存在失败项，建议返回成功数量、失败数量、失败原因摘要
 
 ---
 
-## 6.4 库存价格管理接口
+## 8. 数据库设计
 
-控制器建议：`HotelInventoryController`
-
-一期实际上主要操作 [`hotel_room_type`](sql/hotel_room_type.sql) 中的默认价格、默认库存、预订开关与上架状态；
-二期再正式启用 [`hotel_room_inventory`](sql/hotel_room_inventory.sql) 进行按日房态管理。
-
-### 6.4.1 经营列表
-
-- 请求方式：`GET`
-- 路径：`/hotel/inventory/list`
-- 权限：`hotel:inventory:list`
-
-请求参数：
-
-- `roomTypeName`
-- `saleStatus`
-- `bookableFlag`
-- `pageNum`
-- `pageSize`
-
-### 6.4.2 修改默认价格
-
-- 请求方式：`PUT`
-- 路径：`/hotel/inventory/updateBasePrice`
-- 权限：`hotel:inventory:edit`
-
-请求体示例：
-
-```json
-{
-  "id": 1,
-  "basePrice": 299.00
-}
-```
-
-### 6.4.3 修改默认库存
-
-- 请求方式：`PUT`
-- 路径：`/hotel/inventory/updateBaseStock`
-- 权限：`hotel:inventory:edit`
-
-请求体示例：
-
-```json
-{
-  "id": 1,
-  "baseStock": 20
-}
-```
-
-### 6.4.4 批量修改价格库存
-
-- 请求方式：`PUT`
-- 路径：`/hotel/inventory/batchUpdate`
-- 权限：`hotel:inventory:batchEdit`
-
-请求体示例：
-
-```json
-{
-  "ids": [1, 2, 3],
-  "basePrice": 299.00,
-  "baseStock": 15
-}
-```
-
-### 6.4.5 修改是否可预订
-
-- 请求方式：`PUT`
-- 路径：`/hotel/inventory/changeBookableFlag`
-- 权限：`hotel:inventory:edit`
-
-### 6.4.6 修改上架状态
-
-- 请求方式：`PUT`
-- 路径：`/hotel/inventory/changeSaleStatus`
-- 权限：`hotel:roomType:putOn` / `hotel:roomType:putOff`
-
-### 6.4.7 业务规则
-
-- 默认价格必须大于 0
-- 默认库存必须大于等于 0
-- 上架时必须满足配置完整条件
-- 下架时直接更新状态
-- 批量更新时需校验所有房型归属当前商家
-
----
-
-## 6.5 酒店退款接口
-
-控制器建议：`HotelRefundController`
-
-### 6.5.1 退款分页列表
-
-- 请求方式：`GET`
-- 路径：`/hotel/refund/list`
-- 权限：`hotel:refund:list`
-
-请求参数：
-
-- `orderNo`
-- `refundNo`
-- `roomTypeName`
-- `refundStatus`
-- `beginApplyTime`
-- `endApplyTime`
-- `beginCheckInDate`
-- `endCheckInDate`
-
-### 6.5.2 退款详情
-
-- 请求方式：`GET`
-- 路径：`/hotel/refund/{id}`
-- 权限：`hotel:refund:detail`
-
-### 6.5.3 同意退款
-
-- 请求方式：`PUT`
-- 路径：`/hotel/refund/approve`
-- 权限：`hotel:refund:approve`
-
-请求体示例：
-
-```json
-{
-  "id": 1,
-  "auditRemark": "符合取消规则，同意退款"
-}
-```
-
-### 6.5.4 拒绝退款
-
-- 请求方式：`PUT`
-- 路径：`/hotel/refund/reject`
-- 权限：`hotel:refund:reject`
-
-请求体示例：
-
-```json
-{
-  "id": 1,
-  "auditRemark": "超过免费取消时间，不予退款"
-}
-```
-
-### 6.5.5 后端处理规则
-
-- 仅待商家处理状态允许审核
-- 同意退款：状态更新为商家已同意
-- 拒绝退款：状态更新为商家已拒绝
-- 同意或拒绝都必须记录审核人、审核时间、备注
-- 拒绝时备注必填
-
----
-
-## 7. 数据库设计
-
-## 7.1 命名规范
+## 8.1 命名规范
 
 建议使用以下命名风格：
 
 - 表名前缀统一使用 `hotel_`
-- 主键统一 `id`
-- 删除标记统一 `del_flag`
+- 主键统一使用 `id`
+- 删除标记统一使用 `del_flag`
 - 创建更新字段沿用若依标准字段
-- 状态字段统一使用 `char(1)` 或 `varchar(10)`，与字典保持一致
+- 状态字段统一使用 `char` 或短 `varchar`
+- 金额字段统一使用 `decimal(10,2)`
+
+## 8.2 酒店表 `hotel_info`
+
+建议承载酒店基础资料与经营配置。
+
+### 8.2.1 字段建议
+
+| 字段 | 类型建议 | 说明 |
+|---|---|---|
+| id | bigint | 主键 |
+| merchant_id | bigint | 商家编号 |
+| hotel_name | varchar(50) | 酒店名称 |
+| hotel_cover | varchar(255) | 封面图 |
+| hotel_images | text | 轮播图集合 |
+| phone | varchar(20) | 联系电话 |
+| province_code | varchar(20) | 省编码 |
+| city_code | varchar(20) | 市编码 |
+| district_code | varchar(20) | 区编码 |
+| address | varchar(255) | 详细地址 |
+| longitude | decimal(10,6) | 经度 |
+| latitude | decimal(10,6) | 纬度 |
+| check_in_time | varchar(10) | 入住时间 |
+| check_out_time | varchar(10) | 离店时间 |
+| intro | text | 酒店简介 |
+| booking_notice | text | 预订须知 |
+| invoice_desc | text | 开票说明 |
+| parking_desc | text | 停车说明 |
+| commission_mode | char(1) | 佣金模式 |
+| commission_value | decimal(10,2) | 佣金值 |
+| bd_user_id | bigint | 当前 BD 编号 |
+| bd_name | varchar(50) | 当前 BD 名称快照 |
+| bd_phone | varchar(20) | 当前 BD 电话 |
+| refund_rule_type | char(1) | 退款规则类型 |
+| refund_rule_desc | varchar(500) | 退款规则说明 |
+| refund_deadline_desc | varchar(255) | 限时退款说明 |
+| status | char(1) | 酒店状态 |
+| del_flag | char(1) | 删除标记 |
+| create_by | varchar(64) | 创建者 |
+| create_time | datetime | 创建时间 |
+| update_by | varchar(64) | 更新者 |
+| update_time | datetime | 更新时间 |
+
+### 8.2.2 索引建议
+
+- 唯一索引 `uk_merchant_id` 对应 `merchant_id`
+- 普通索引 `idx_bd_user_id` 对应 `bd_user_id`
+
+## 8.3 房型表 `hotel_room_type`
+
+### 8.3.1 字段建议
+
+沿用管理方案中的房型结构，重点字段如下：
+
+- `room_type_name`
+- `room_type_code`
+- `room_images`
+- `bed_type`
+- `people_limit`
+- `base_price`
+- `market_price` 若项目需要划线价可补充
+- `base_stock`
+- `config_status`
+- `sale_status`
+- `bookable_flag`
+
+### 8.3.2 索引建议
+
+- 唯一索引 `uk_hotel_room_type_name` 对应 `hotel_id, room_type_name`
+- 唯一索引 `uk_hotel_room_type_code` 对应 `hotel_id, room_type_code`
+- 普通索引 `idx_merchant_id`
+- 普通索引 `idx_hotel_id`
+
+## 8.4 设施表与关联表
+
+### 8.4.1 `hotel_facility`
+
+承载平台标准设施项。
+
+### 8.4.2 `hotel_room_type_facility_rel`
+
+承载房型与设施的多对多关系。
+
+### 8.4.3 实现建议
+
+- 保存关系时采用先删后插
+- 增加唯一索引避免重复绑定
+
+## 8.5 房态库存价格表 `hotel_room_inventory` 预留
+
+### 8.5.1 一期策略
+
+- 可以先不启用按日房态表
+- 默认库存价格直接使用房型表字段维护
+
+### 8.5.2 二期策略
+
+- 启用 `biz_date` 维度管理库存与价格
+- 支持批量调价、批量调库存、停售日配置
+
+## 8.6 订单表 `hotel_order`
+
+### 8.6.1 字段建议
+
+| 字段 | 类型建议 | 说明 |
+|---|---|---|
+| id | bigint | 主键 |
+| order_no | varchar(50) | 订单号 |
+| hotel_id | bigint | 酒店编号 |
+| merchant_id | bigint | 商家编号 |
+| room_type_id | bigint | 房型编号 |
+| contact_name | varchar(50) | 联系人 |
+| contact_phone | varchar(20) | 联系电话 |
+| check_in_date | date | 入住日期 |
+| check_out_date | date | 离店日期 |
+| order_amount | decimal(10,2) | 订单金额 |
+| pay_amount | decimal(10,2) | 实付金额 |
+| refunded_amount | decimal(10,2) | 已退款金额 |
+| refundable_amount | decimal(10,2) | 剩余可退款金额 |
+| order_status | char(1) | 订单状态 |
+| after_sale_status | char(1) | 售后状态 |
+| pay_time | datetime | 支付时间 |
+| create_time | datetime | 创建时间 |
+| update_time | datetime | 更新时间 |
+
+### 8.6.2 索引建议
+
+- 唯一索引 `uk_order_no`
+- 普通索引 `idx_merchant_id`
+- 普通索引 `idx_hotel_id`
+- 普通索引 `idx_room_type_id`
+
+## 8.7 退款单表 `hotel_refund_order`
+
+### 8.7.1 字段建议
+
+| 字段 | 类型建议 | 说明 |
+|---|---|---|
+| id | bigint | 主键 |
+| refund_no | varchar(50) | 退款单号 |
+| order_id | bigint | 订单编号 |
+| order_no | varchar(50) | 订单号 |
+| hotel_id | bigint | 酒店编号 |
+| merchant_id | bigint | 商家编号 |
+| room_type_id | bigint | 房型编号 |
+| apply_refund_amount | decimal(10,2) | 申请退款金额 |
+| approved_refund_amount | decimal(10,2) | 审核通过退款金额 |
+| refund_reason | varchar(500) | 退款原因 |
+| refund_status | char(1) | 退款状态 |
+| audit_remark | varchar(500) | 审核备注 |
+| audit_by | varchar(64) | 审核人 |
+| audit_time | datetime | 审核时间 |
+| create_time | datetime | 创建时间 |
+| update_time | datetime | 更新时间 |
+
+### 8.7.2 实现建议
+
+- 退款单仍独立建表，但页面入口归属订单域
+- 审核成功后必须与订单表金额字段联动更新
+
+## 8.8 BD 归属变更表 `hotel_bd_change_record`
+
+### 8.8.1 字段建议
+
+| 字段 | 类型建议 | 说明 |
+|---|---|---|
+| id | bigint | 主键 |
+| hotel_id | bigint | 酒店编号 |
+| merchant_id | bigint | 商家编号 |
+| old_bd_user_id | bigint | 原 BD 编号 |
+| old_bd_name | varchar(50) | 原 BD 名称 |
+| old_bd_phone | varchar(20) | 原 BD 电话 |
+| new_bd_user_id | bigint | 新 BD 编号 |
+| new_bd_name | varchar(50) | 新 BD 名称 |
+| new_bd_phone | varchar(20) | 新 BD 电话 |
+| change_reason | varchar(500) | 更换原因 |
+| effective_time | datetime | 生效时间 |
+| operate_by | varchar(64) | 操作人 |
+| operate_time | datetime | 操作时间 |
+
+### 8.8.2 索引建议
+
+- 普通索引 `idx_hotel_id`
+- 普通索引 `idx_old_bd_user_id`
+- 普通索引 `idx_new_bd_user_id`
+- 普通索引 `idx_operate_time`
 
 ---
 
-## 7.2 酒店表
-
-建议表名：`hotel_info`
-
-### 7.2.1 建表建议
-
-```sql
-CREATE TABLE `hotel_info` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
-  `merchant_id` bigint NOT NULL COMMENT '商家编号',
-  `hotel_name` varchar(50) NOT NULL COMMENT '酒店名称',
-  `hotel_cover` varchar(255) DEFAULT NULL COMMENT '封面图',
-  `hotel_images` text COMMENT '轮播图集合，逗号分隔或JSON数组',
-  `phone` varchar(20) NOT NULL COMMENT '联系电话',
-  `province_code` varchar(20) DEFAULT NULL COMMENT '省编码',
-  `city_code` varchar(20) DEFAULT NULL COMMENT '市编码',
-  `district_code` varchar(20) DEFAULT NULL COMMENT '区编码',
-  `address` varchar(255) NOT NULL COMMENT '详细地址',
-  `longitude` decimal(10,6) DEFAULT NULL COMMENT '经度',
-  `latitude` decimal(10,6) DEFAULT NULL COMMENT '纬度',
-  `check_in_time` varchar(10) NOT NULL COMMENT '入住时间',
-  `check_out_time` varchar(10) NOT NULL COMMENT '离店时间',
-  `intro` text COMMENT '酒店简介',
-  `booking_notice` text COMMENT '预订须知',
-  `cancel_rule` text COMMENT '取消规则',
-  `invoice_desc` text COMMENT '开票说明',
-  `parking_desc` text COMMENT '停车说明',
-  `status` char(1) NOT NULL DEFAULT '1' COMMENT '酒店状态',
-  `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标记',
-  `create_by` varchar(64) DEFAULT '' COMMENT '创建者',
-  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
-  `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
-  `update_time` datetime DEFAULT NULL COMMENT '更新时间',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_merchant_id` (`merchant_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='酒店信息表';
-```
-
----
-
-## 7.3 房型表
-
-建议表名：`hotel_room_type`
-
-### 7.3.1 建表建议
-
-```sql
-CREATE TABLE `hotel_room_type` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
-  `hotel_id` bigint NOT NULL COMMENT '酒店编号',
-  `merchant_id` bigint NOT NULL COMMENT '商家编号',
-  `room_type_name` varchar(50) NOT NULL COMMENT '房型名称',
-  `room_type_code` varchar(50) NOT NULL COMMENT '房型编码',
-  `room_images` text COMMENT '房型图片集合',
-  `bed_type` char(1) NOT NULL COMMENT '床型',
-  `people_limit` int NOT NULL DEFAULT 1 COMMENT '可住人数',
-  `area` varchar(30) DEFAULT NULL COMMENT '面积说明',
-  `floor_desc` varchar(50) DEFAULT NULL COMMENT '楼层描述',
-  `window_type` char(1) DEFAULT NULL COMMENT '窗型',
-  `breakfast_count` int DEFAULT 0 COMMENT '早餐数量',
-  `extra_bed_flag` char(1) DEFAULT 'N' COMMENT '是否可加床',
-  `description` text COMMENT '房型描述',
-  `base_price` decimal(10,2) DEFAULT NULL COMMENT '默认价格',
-  `base_stock` int DEFAULT 0 COMMENT '默认库存',
-  `config_status` char(1) NOT NULL DEFAULT '1' COMMENT '配置状态',
-  `sale_status` char(1) NOT NULL DEFAULT '0' COMMENT '上架状态',
-  `bookable_flag` char(1) NOT NULL DEFAULT 'Y' COMMENT '是否可预订',
-  `sort_num` int DEFAULT 0 COMMENT '排序号',
-  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
-  `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标记',
-  `create_by` varchar(64) DEFAULT '' COMMENT '创建者',
-  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
-  `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
-  `update_time` datetime DEFAULT NULL COMMENT '更新时间',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_hotel_room_type_name` (`hotel_id`, `room_type_name`),
-  UNIQUE KEY `uk_hotel_room_type_code` (`hotel_id`, `room_type_code`),
-  KEY `idx_hotel_id` (`hotel_id`),
-  KEY `idx_merchant_id` (`merchant_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='酒店房型表';
-```
-
----
-
-## 7.4 设施表
-
-建议表名：`hotel_facility`
-
-### 7.4.1 建表建议
-
-```sql
-CREATE TABLE `hotel_facility` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
-  `facility_name` varchar(50) NOT NULL COMMENT '设施名称',
-  `facility_type` char(1) NOT NULL COMMENT '设施分类',
-  `status` char(1) NOT NULL DEFAULT '1' COMMENT '状态',
-  `sort_num` int DEFAULT 0 COMMENT '排序号',
-  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='酒店设施表';
-```
-
----
-
-## 7.5 房型设施关联表
-
-建议表名：`hotel_room_type_facility_rel`
-
-### 7.5.1 建表建议
-
-```sql
-CREATE TABLE `hotel_room_type_facility_rel` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
-  `hotel_id` bigint NOT NULL COMMENT '酒店编号',
-  `room_type_id` bigint NOT NULL COMMENT '房型编号',
-  `facility_id` bigint NOT NULL COMMENT '设施编号',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_room_type_facility` (`room_type_id`, `facility_id`),
-  KEY `idx_hotel_id` (`hotel_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='房型设施关联表';
-```
-
----
-
-## 7.6 房态库存价格表 预留
-
-建议表名：`hotel_room_inventory`
-
-### 7.6.1 建表建议
-
-```sql
-CREATE TABLE `hotel_room_inventory` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
-  `hotel_id` bigint NOT NULL COMMENT '酒店编号',
-  `merchant_id` bigint NOT NULL COMMENT '商家编号',
-  `room_type_id` bigint NOT NULL COMMENT '房型编号',
-  `biz_date` date NOT NULL COMMENT '业务日期',
-  `stock_num` int NOT NULL DEFAULT 0 COMMENT '库存数量',
-  `sold_num` int NOT NULL DEFAULT 0 COMMENT '已售数量',
-  `available_num` int NOT NULL DEFAULT 0 COMMENT '剩余可售',
-  `sale_price` decimal(10,2) DEFAULT NULL COMMENT '销售价',
-  `market_price` decimal(10,2) DEFAULT NULL COMMENT '划线价',
-  `sale_status` char(1) NOT NULL DEFAULT '1' COMMENT '可售状态',
-  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
-  `update_time` datetime DEFAULT NULL COMMENT '更新时间',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_room_type_biz_date` (`room_type_id`, `biz_date`),
-  KEY `idx_hotel_id` (`hotel_id`),
-  KEY `idx_merchant_id` (`merchant_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='房态库存价格表';
-```
-
-说明：
-
-- 一期建表可选
-- 二期启用时直接接入日历房态能力
-
----
-
-## 7.7 退款单表
-
-建议表名：`hotel_refund_order`
-
-### 7.7.1 建表建议
-
-```sql
-CREATE TABLE `hotel_refund_order` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
-  `refund_no` varchar(50) NOT NULL COMMENT '退款单号',
-  `order_id` bigint NOT NULL COMMENT '订单编号',
-  `order_no` varchar(50) NOT NULL COMMENT '订单号',
-  `hotel_id` bigint NOT NULL COMMENT '酒店编号',
-  `merchant_id` bigint NOT NULL COMMENT '商家编号',
-  `room_type_id` bigint NOT NULL COMMENT '房型编号',
-  `guest_name` varchar(50) DEFAULT NULL COMMENT '入住人',
-  `guest_phone` varchar(20) DEFAULT NULL COMMENT '联系电话',
-  `check_in_date` date DEFAULT NULL COMMENT '入住日期',
-  `check_out_date` date DEFAULT NULL COMMENT '离店日期',
-  `order_amount` decimal(10,2) DEFAULT NULL COMMENT '订单金额',
-  `apply_refund_amount` decimal(10,2) NOT NULL COMMENT '申请退款金额',
-  `refund_reason` varchar(500) DEFAULT NULL COMMENT '退款原因',
-  `refund_status` char(1) NOT NULL COMMENT '退款状态',
-  `audit_remark` varchar(500) DEFAULT NULL COMMENT '审核备注',
-  `audit_by` varchar(64) DEFAULT NULL COMMENT '审核人',
-  `audit_time` datetime DEFAULT NULL COMMENT '审核时间',
-  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
-  `update_time` datetime DEFAULT NULL COMMENT '更新时间',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_refund_no` (`refund_no`),
-  KEY `idx_order_id` (`order_id`),
-  KEY `idx_hotel_id` (`hotel_id`),
-  KEY `idx_merchant_id` (`merchant_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='酒店退款单表';
-```
-
----
-
-## 8. 字典设计
+## 9. 字典设计
 
 建议在若依字典中新增以下类型：
 
 | 字典类型 | 字典名称 | 建议值 |
 |---|---|---|
-| `hotel_status` | 酒店状态 | 0草稿 1启用 2停业 |
-| `hotel_room_config_status` | 房型配置状态 | 0停用 1启用 |
-| `hotel_room_sale_status` | 房型上架状态 | 0下架 1上架 |
+| `hotel_status` | 酒店状态 | 0草稿 1启用 2停业 3待审核 |
+| `hotel_commission_mode` | 佣金模式 | 1底价模式 2卖价模式 |
+| `hotel_refund_rule_type` | 退款规则 | 1限时退 2不可退 3任意退 |
+| `hotel_room_config_status` | 房型配置状态 | 0未启用 1已启用 |
+| `hotel_room_sale_status` | 房型上架状态 | 0已下架 1已上架 |
 | `hotel_bookable_flag` | 是否可预订 | Y是 N否 |
 | `hotel_bed_type` | 床型 | 1大床 2双床 3圆床 4榻榻米 9其他 |
 | `hotel_window_type` | 窗型 | 1有窗 2无窗 3部分有窗 |
 | `hotel_facility_type` | 设施分类 | 1房间设施 2卫浴设施 3公共设施 4服务设施 |
+| `hotel_order_status` | 订单状态 | 1待支付 2已支付待入住 3入住中 4已完成 5已取消 |
+| `hotel_after_sale_status` | 售后状态 | 0无售后 1待退款处理 2部分退款中 3已退款 4退款驳回 |
 | `hotel_refund_status` | 退款状态 | 1待商家处理 2商家已同意 3商家已拒绝 4退款处理中 5退款成功 6退款失败 |
 
 ---
 
-## 9. 权限与菜单配置设计
+## 10. 权限与菜单配置设计
 
-## 9.1 菜单结构建议
+## 10.1 菜单结构建议
 
 最终在若依菜单中建议配置：
 
 ```text
 酒店管理
 ├─ 酒店信息
+├─ 佣金与归属配置
 ├─ 房型管理
 ├─ 库存价格管理
-└─ 酒店退款
+├─ 酒店订单
+└─ 更换所属BD
 ```
 
-## 9.2 权限标识建议
+## 10.2 权限标识建议
 
-### 酒店信息
+### 酒店信息与配置
 
 - `hotel:info:query`
 - `hotel:info:edit`
+- `hotel:config:commission`
+- `hotel:config:bd`
+- `hotel:config:refundRule`
 
 ### 房型管理
 
@@ -1115,144 +956,175 @@ CREATE TABLE `hotel_refund_order` (
 - `hotel:inventory:edit`
 - `hotel:inventory:batchEdit`
 
-### 酒店退款
+### 酒店订单
 
-- `hotel:refund:list`
-- `hotel:refund:detail`
-- `hotel:refund:approve`
-- `hotel:refund:reject`
+- `hotel:order:list`
+- `hotel:order:detail`
+- `hotel:order:refundView`
+- `hotel:order:refundApprove`
+- `hotel:order:refundReject`
+- `hotel:order:refundAmountEdit`
+
+### 更换所属 BD
+
+- `hotel:bdChange:list`
+- `hotel:bdChange:update`
+- `hotel:bdChange:batchUpdate`
+- `hotel:bdChange:record`
 
 ---
 
-## 10. 核心后端实现规则
+## 11. 核心实现规则
 
-## 10.1 商家数据隔离
+## 11.1 房型上架校验
 
-商家侧所有查询和操作必须基于当前登录用户的商家身份进行数据隔离。
-
-建议做法：
-
-- 从登录态中获取当前用户 ID
-- 通过商家绑定关系解析 `merchant_id`
-- 查询房型、酒店、退款时统一带入 `merchant_id`
-- 控制器层不信任前端传入的商家编号
-
-## 10.2 房型上架校验
-
-建议封装独立方法，例如：`validateRoomTypeCanPutOn()`。
+建议封装独立方法，例如 `validateRoomTypeCanPutOn`。
 
 校验项：
 
-- 酒店存在且启用
+- 酒店存在且状态允许经营
 - 房型配置状态为启用
 - 房型图片不为空
 - 默认价格大于 0
 - 默认库存大于 0
+- 房型关键静态字段完整
 
-## 10.3 删除规则
+## 11.2 删除规则
 
 房型删除建议遵循：
 
 - 无订单、无经营数据时允许逻辑删除
 - 有订单或库存经营记录时只允许停用，不允许删除
 
-## 10.4 退款审核幂等控制
+## 11.3 退款审核幂等控制
 
-退款审核操作建议加状态前置校验：
+退款审核操作建议增加状态前置校验：
 
 - 当前状态必须为待商家处理
 - 审核完成后再次提交应提示状态已变化
+- 同意退款时校验订单剩余可退款金额
+- 并发下建议使用状态条件更新或乐观锁机制
+
+## 11.4 更换所属 BD 审计要求
+
+更换所属 BD 必须满足：
+
+- 更新当前归属信息
+- 写入原归属和新归属快照
+- 记录操作人、操作时间、变更原因
+- 批量操作逐条保留变更日志
+
+## 11.5 图片字段处理约定
+
+建议：
+
+- 接口层使用数组
+- 服务层统一转为 JSON 字符串存储
+- 出参统一反序列化为数组
 
 ---
 
-## 11. 开发顺序建议
+## 12. 开发顺序建议
 
-## 11.1 第一步
+## 12.1 第一步
 
 先落数据库与字典：
 
-- 建酒店表
+- 建酒店表或扩展酒店表字段
 - 建房型表
 - 建设施表
 - 建房型设施关联表
+- 建订单表或对接现有订单表
 - 建退款表
+- 建 BD 归属变更表
 - 初始化字典数据
 
-## 11.2 第二步
+## 12.2 第二步
 
 落后端基础能力：
 
-- 酒店信息接口
+- 酒店信息与经营配置接口
 - 房型管理接口
 - 设施绑定接口
 - 库存价格管理接口
-- 退款列表与审核接口
+- 订单列表与详情接口
+- 退款审核接口
+- 更换所属 BD 接口
 
-## 11.3 第三步
+## 12.3 第三步
 
 落前端页面：
 
-- 酒店信息页
+- 酒店信息与配置页
 - 房型管理页
 - 库存价格管理页
-- 酒店退款页
+- 酒店订单页
+- 更换所属 BD 页
 
-## 11.4 第四步
+## 12.4 第四步
 
-补菜单、权限、日志：
+联调与测试：
 
-- 新增菜单数据
-- 绑定角色权限
-- 接入操作日志
-- 联调验证权限点
-
----
-
-## 12. 第一阶段可直接落地的文件建议
-
-如果下一步直接开始编码，建议优先创建以下文件：
-
-### 后端
-
-- `yimamerchant-system/src/main/java/com/yimamerchant/system/domain/hotel/HotelInfo.java`
-- `yimamerchant-system/src/main/java/com/yimamerchant/system/domain/hotel/HotelRoomType.java`
-- `yimamerchant-system/src/main/java/com/yimamerchant/system/domain/hotel/HotelFacility.java`
-- `yimamerchant-system/src/main/java/com/yimamerchant/system/domain/hotel/HotelRefundOrder.java`
-- `yimamerchant-admin/src/main/java/com/yimamerchant/web/controller/hotel/HotelInfoController.java`
-- `yimamerchant-admin/src/main/java/com/yimamerchant/web/controller/hotel/HotelRoomTypeController.java`
-- `yimamerchant-admin/src/main/java/com/yimamerchant/web/controller/hotel/HotelInventoryController.java`
-- `yimamerchant-admin/src/main/java/com/yimamerchant/web/controller/hotel/HotelRefundController.java`
-
-### Mapper XML
-
-- `yimamerchant-system/src/main/resources/mapper/hotel/HotelInfoMapper.xml`
-- `yimamerchant-system/src/main/resources/mapper/hotel/HotelRoomTypeMapper.xml`
-- `yimamerchant-system/src/main/resources/mapper/hotel/HotelFacilityMapper.xml`
-- `yimamerchant-system/src/main/resources/mapper/hotel/HotelRefundOrderMapper.xml`
-
-### 前端
-
-- `yimamerchant-ui/src/api/hotel/info.js`
-- `yimamerchant-ui/src/api/hotel/roomType.js`
-- `yimamerchant-ui/src/api/hotel/inventory.js`
-- `yimamerchant-ui/src/api/hotel/refund.js`
-- `yimamerchant-ui/src/views/hotel/info/index.vue`
-- `yimamerchant-ui/src/views/hotel/roomType/index.vue`
-- `yimamerchant-ui/src/views/hotel/inventory/index.vue`
-- `yimamerchant-ui/src/views/hotel/refund/index.vue`
-
-### SQL
-
-- `sql/hotel_module.sql`
+- 字段映射联调
+- 状态流转联调
+- 退款金额边界测试
+- 批量更换 BD 场景测试
+- 操作日志与权限测试
 
 ---
 
-## 13. 结论
+## 13. 风险与规避建议
 
-该技术设计文档已经把 [`plans/hotel-management-plan.md`](plans/hotel-management-plan.md) 中的业务方案转换为前后端与数据库可执行方案，适合作为后续正式开发的技术基线。
+### 13.1 退款入口与实现割裂
 
-如按当前节奏继续推进，下一步最合理的是：
+规避建议：
 
-- 先输出 [`sql/hotel_module.sql`](sql/hotel_module.sql) 的建表与初始化字典脚本
-- 再落后端 domain、mapper、service、controller 骨架
-- 最后补前端 API 与页面骨架
+- 页面统一从订单进入退款处理
+- 数据仍由退款单独立存储
+- 订单详情聚合退款记录展示
+
+### 13.2 酒店配置项分散维护
+
+规避建议：
+
+- 基础信息、佣金、BD、退款规则统一在酒店配置页维护
+- 服务层统一走酒店配置保存入口
+
+### 13.3 BD 交接后展示不同步
+
+规避建议：
+
+- 更换所属 BD 成功后刷新酒店配置摘要
+- 当前归属信息与历史记录分表存储
+
+### 13.4 状态流转复杂导致代码耦合
+
+规避建议：
+
+- 订单状态、售后状态、退款状态分别定义
+- 金额计算统一收敛到退款服务中处理
+- 状态变更点统一打操作日志
+
+---
+
+## 14. 一期与二期边界说明
+
+### 14.1 一期落地
+
+- 当前商家唯一酒店信息与经营配置维护
+- 房型基础档案管理
+- 房型设施绑定
+- 默认价格、默认库存维护
+- 房型上下架与可预订控制
+- 酒店订单列表与详情
+- 订单内退款处理
+- 更换所属 BD 与变更记录
+
+### 14.2 二期预留
+
+- 基于 `hotel_room_inventory` 的按日房态库存与价格管理
+- 多店铺管理
+- 与订单中心联动扣减库存
+- 退款自动打款与平台复核
+- 基于佣金模式的自动结算
+- BD 交接审批流与历史轨迹增强
