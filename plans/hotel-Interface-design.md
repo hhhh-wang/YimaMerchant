@@ -1,997 +1,1185 @@
-# 酒店商家端后端接口文档
+# 酒店管理技术接口设计文档
 
 ## 1. 文档说明
 
-本文档基于 [`plans/hotel-technical-design.md`](plans/hotel-technical-design.md) 与 [`sql/hotel.sql`](sql/hotel.sql) 整理酒店商家端一期后端接口设计，输出面向前后端联调、接口开发、测试用例编写的接口文档。
+本文档基于 [`plans/酒店.md`](plans/酒店.md) 的业务规划内容，结合当前项目的若依前后端分离基础结构，输出酒店业务模块的技术接口设计方案。
 
-适用范围：
+默认技术前提如下：
 
-- 酒店信息维护
-- 房型管理
-- 房型设施绑定
-- 默认库存与默认价格管理
-- 房型上下架与可预订状态控制
-- 酒店退款列表与审核处理
+- 前端：Vue2 + Element UI + 若依标准列表/表单/详情页模式
+- 后端：Spring Boot + Spring Security + MyBatis
+- 管理端控制器模块：[`yimamerchant-admin`](yimamerchant-admin)
+- 业务领域模型、Service、Mapper、XML 所在模块：[`yimamerchant-system`](yimamerchant-system)
+- 数据库脚本输出：[`sql/hotel.sql`](sql/hotel.sql)
 
-技术约定：
+本文档重点覆盖三部分内容：
 
-- 后端框架：Spring Boot + Spring Security + MyBatis
-- 返回格式遵循若依标准 [`AjaxResult`](yimamerchant-common/src/main/java/com/yimamerchant/common/core/domain/AjaxResult.java) 与 [`TableDataInfo`](yimamerchant-common/src/main/java/com/yimamerchant/common/core/page/TableDataInfo.java)
-- 接口默认通过当前登录商家上下文识别 `merchantId`
-- 一期采用单店模型，但核心数据保留 `merchant_id`、`hotel_id`
-- 时间格式统一为 `yyyy-MM-dd HH:mm:ss`
-- 日期格式统一为 `yyyy-MM-dd`
-- 金额单位统一为元，保留两位小数
+1. 前端页面规划
+2. 后端接口设计
+3. 数据库表设计说明
 
 ---
 
-## 2. 通用规范
+## 2. 模块总览
 
-## 2.1 请求头
+### 2.1 菜单结构建议
 
-所有管理端接口均需携带登录令牌：
+```text
+[酒店合作中心]
+├─ 待签约酒店
+├─ 合作酒店
+├─ BD-酒店归属管理
+└─ BD绩效看板（可选）
 
-```http
-Authorization: Bearer {token}
-Content-Type: application/json
+[酒店运营中心]
+├─ 酒店信息
+├─ 房型管理
+└─ 库存价格管理
+
+[交易与服务中心]
+└─ 酒店订单
+
+[财务结算中心]
+└─ 账单管理
+
+[系统与配置]
+├─ 用户与角色管理（复用若依）
+└─ 酒店业务参数配置
 ```
 
-## 2.2 统一返回结构
+### 2.2 建议代码分层
 
-### 2.2.1 普通对象返回
+#### 前端目录建议
 
-```json
-{
-  "code": 200,
-  "msg": "操作成功",
-  "data": {}
-}
-```
+- [`yimamerchant-ui/src/views/hotel/cooperate/pending/index.vue`](yimamerchant-ui/src/views/hotel/cooperate/pending/index.vue)
+- [`yimamerchant-ui/src/views/hotel/cooperate/partner/index.vue`](yimamerchant-ui/src/views/hotel/cooperate/partner/index.vue)
+- [`yimamerchant-ui/src/views/hotel/cooperate/partner/detail.vue`](yimamerchant-ui/src/views/hotel/cooperate/partner/detail.vue)
+- [`yimamerchant-ui/src/views/hotel/cooperate/bind/index.vue`](yimamerchant-ui/src/views/hotel/cooperate/bind/index.vue)
+- [`yimamerchant-ui/src/views/hotel/operate/info/index.vue`](yimamerchant-ui/src/views/hotel/operate/info/index.vue)
+- [`yimamerchant-ui/src/views/hotel/operate/info/edit.vue`](yimamerchant-ui/src/views/hotel/operate/info/edit.vue)
+- [`yimamerchant-ui/src/views/hotel/operate/roomType/index.vue`](yimamerchant-ui/src/views/hotel/operate/roomType/index.vue)
+- [`yimamerchant-ui/src/views/hotel/operate/price/index.vue`](yimamerchant-ui/src/views/hotel/operate/price/index.vue)
+- [`yimamerchant-ui/src/views/hotel/service/order/index.vue`](yimamerchant-ui/src/views/hotel/service/order/index.vue)
+- [`yimamerchant-ui/src/views/hotel/finance/bill/index.vue`](yimamerchant-ui/src/views/hotel/finance/bill/index.vue)
+- [`yimamerchant-ui/src/views/hotel/finance/bill/detail.vue`](yimamerchant-ui/src/views/hotel/finance/bill/detail.vue)
+- [`yimamerchant-ui/src/views/hotel/config/index.vue`](yimamerchant-ui/src/views/hotel/config/index.vue)
 
-### 2.2.2 列表分页返回
+#### 前端 API 目录建议
 
-```json
-{
-  "code": 200,
-  "msg": "查询成功",
-  "rows": [],
-  "total": 0
-}
-```
+- [`yimamerchant-ui/src/api/hotel/cooperate/pending.js`](yimamerchant-ui/src/api/hotel/cooperate/pending.js)
+- [`yimamerchant-ui/src/api/hotel/cooperate/partner.js`](yimamerchant-ui/src/api/hotel/cooperate/partner.js)
+- [`yimamerchant-ui/src/api/hotel/cooperate/bind.js`](yimamerchant-ui/src/api/hotel/cooperate/bind.js)
+- [`yimamerchant-ui/src/api/hotel/operate/info.js`](yimamerchant-ui/src/api/hotel/operate/info.js)
+- [`yimamerchant-ui/src/api/hotel/operate/roomType.js`](yimamerchant-ui/src/api/hotel/operate/roomType.js)
+- [`yimamerchant-ui/src/api/hotel/operate/price.js`](yimamerchant-ui/src/api/hotel/operate/price.js)
+- [`yimamerchant-ui/src/api/hotel/service/order.js`](yimamerchant-ui/src/api/hotel/service/order.js)
+- [`yimamerchant-ui/src/api/hotel/finance/bill.js`](yimamerchant-ui/src/api/hotel/finance/bill.js)
+- [`yimamerchant-ui/src/api/hotel/config.js`](yimamerchant-ui/src/api/hotel/config.js)
 
-### 2.2.3 失败返回
+#### 后端包结构建议
 
-```json
-{
-  "code": 500,
-  "msg": "业务处理失败"
-}
-```
+控制器建议放在 [`yimamerchant-admin/src/main/java/com/yimamerchant/web/controller/hotel`](yimamerchant-admin/src/main/java/com/yimamerchant/web/controller/hotel)。
 
-## 2.3 通用业务约束
+业务代码建议放在 [`yimamerchant-system/src/main/java/com/yimamerchant/system/hotel`](yimamerchant-system/src/main/java/com/yimamerchant/system/hotel)。
 
-- 除设施基础数据接口外，其余接口均基于当前登录商家隔离数据
-- 酒店信息接口默认仅维护当前商家唯一酒店，对应 [`hotel_info`](sql/hotel.sql)
-- 房型接口操作前需校验房型属于当前商家与当前酒店
-- 上架前需校验房型基础资料完整、价格库存合法、状态允许上架
-- 删除房型时若存在订单、退款单、库存明细等关联经营数据，应禁止删除
-- 退款审核仅允许在“待商家处理”状态执行一次性审核
+推荐分层：
 
-## 2.4 状态字典约定
-
-状态取值建议与 [`sql/hotel.sql`](sql/hotel.sql) 初始化字典保持一致：
-
-- `hotel_status`：`0` 草稿、`1` 启用、`2` 停业
-- `hotel_room_config_status`：`0` 停用、`1` 启用
-- `hotel_room_sale_status`：`0` 下架、`1` 上架
-- `hotel_bookable_flag`：`N` 否、`Y` 是
-- `hotel_refund_status`：`1` 待商家处理、`2` 商家已同意、`3` 商家已拒绝
-- `hotel_room_bed_type`：`1` 大床、`2` 双床、`3` 圆床、`4` 榻榻米
-- `hotel_room_window_type`：`1` 有窗、`2` 无窗、`3` 部分有窗
-- `hotel_facility_type`：`1` 房间设施、`2` 卫浴设施、`3` 公共设施、`4` 服务设施
+- controller
+- domain
+- dto
+- vo
+- mapper
+- service
+- service.impl
 
 ---
 
-## 3. 模块总览
+## 3. 前端页面规划
 
-| 模块 | 前缀 | 控制器建议 | 说明 |
-|---|---|---|---|
-| 酒店信息 | `/hotel/info` | `HotelInfoController` | 当前商家酒店资料维护 |
-| 房型管理 | `/hotel/roomType` | `HotelRoomTypeController` | 房型增删改查、上下架 |
-| 设施管理 | `/hotel/facility` | `HotelFacilityController` | 设施列表与房型设施绑定 |
-| 库存价格 | `/hotel/inventory` | `HotelInventoryController` | 默认库存、默认价格、批量修改 |
-| 退款管理 | `/hotel/refund` | `HotelRefundController` | 退款列表、详情、审核 |
+## 3.1 酒店合作中心
+
+### 3.1.1 待签约酒店
+
+#### 页面信息
+
+- 菜单名称：待签约酒店
+- 前端路由：`/hotel/cooperate/pending`
+- 页面组件：[`yimamerchant-ui/src/views/hotel/cooperate/pending/index.vue`](yimamerchant-ui/src/views/hotel/cooperate/pending/index.vue)
+
+#### 页面组成
+
+1. 查询区
+   - 酒店名称
+   - 申请状态
+   - 申请时间范围
+2. 工具栏
+   - 新增申请
+   - 导出
+   - 批量删除
+3. 列表区
+   - 酒店名称
+   - 申请状态
+   - 申请人
+   - 申请时间
+   - 最后操作时间
+4. 操作区
+   - 查看
+   - 审核通过
+   - 审核驳回
+   - 删除
+5. 详情弹窗/抽屉
+   - 基础信息
+   - 资质附件
+   - 地理位置
+   - 审核日志
+
+#### 页面交互说明
+
+- 列表页采用若依标准 [`listQuery()`](yimamerchant-ui/src/views/hotel/cooperate/pending/index.vue:1) + [`resetQuery()`](yimamerchant-ui/src/views/hotel/cooperate/pending/index.vue:1) 模式
+- 新增、审核、查看建议使用弹窗或抽屉，减少页面切换
+- 审核通过后刷新列表并提示已生成合作酒店档案
+
+### 3.1.2 合作酒店
+
+#### 页面信息
+
+- 菜单名称：合作酒店
+- 前端路由：`/hotel/cooperate/partner`
+- 列表页：[`yimamerchant-ui/src/views/hotel/cooperate/partner/index.vue`](yimamerchant-ui/src/views/hotel/cooperate/partner/index.vue)
+- 详情页：[`yimamerchant-ui/src/views/hotel/cooperate/partner/detail.vue`](yimamerchant-ui/src/views/hotel/cooperate/partner/detail.vue)
+
+#### 页面组成
+
+1. 查询区
+   - 酒店名称
+   - 合作状态
+   - 签约时间范围
+   - 所属BD
+2. 数据卡片
+   - 总合作酒店数
+   - 正常合作数
+   - 本月新增数
+3. 列表区
+   - 酒店ID
+   - 酒店名称
+   - 合作状态
+   - 签约时间
+   - 所属BD
+   - 本月订单数
+   - 本月销售额
+4. 详情页 Tab
+   - 基础信息
+   - 合同管理
+   - 佣金设置
+   - 账号管理
+
+#### 页面交互说明
+
+- 列表页进入详情页使用跳转模式，适合承载多 Tab 配置
+- 合作状态操作应增加二次确认
+- 账号重置密码、发送通知建议使用独立弹窗
+
+### 3.1.3 BD-酒店归属管理
+
+#### 页面信息
+
+- 菜单名称：BD-酒店归属管理
+- 前端路由：`/hotel/cooperate/bind`
+- 页面组件：[`yimamerchant-ui/src/views/hotel/cooperate/bind/index.vue`](yimamerchant-ui/src/views/hotel/cooperate/bind/index.vue)
+
+#### 页面组成
+
+1. 双向筛选区
+   - BD姓名/工号
+   - 酒店名称
+   - 绑定状态
+2. 工具栏
+   - 单个绑定
+   - 批量绑定
+   - 单个解绑
+   - 批量解绑
+   - 一键交接
+   - 查看历史
+3. 列表区
+   - BD姓名
+   - BD工号
+   - 酒店名称
+   - 绑定时间
+   - 绑定状态
+4. 弹窗
+   - BD选择器
+   - 酒店选择器
+   - 批量交接弹窗
+   - 历史记录弹窗
+
+#### 页面交互说明
+
+- BD选择器应支持远程搜索和在职状态过滤
+- 酒店选择器支持多选和展示当前绑定信息
+- 一键交接需强提醒，并显示影响酒店数量
 
 ---
 
-## 4. 酒店信息接口
+## 3.2 酒店运营中心
 
-接口前缀：`/hotel/info`
+### 3.2.1 酒店信息
 
-对应核心表：[`hotel_info`](sql/hotel.sql)
+#### 页面信息
 
-### 4.1 查询当前商家酒店信息
+- 菜单名称：酒店信息
+- 前端路由：`/hotel/operate/info`
+- 列表页：[`yimamerchant-ui/src/views/hotel/operate/info/index.vue`](yimamerchant-ui/src/views/hotel/operate/info/index.vue)
+- 编辑页：[`yimamerchant-ui/src/views/hotel/operate/info/edit.vue`](yimamerchant-ui/src/views/hotel/operate/info/edit.vue)
 
-- 请求方式：`GET`
-- 请求路径：`/hotel/info/getInfo`
-- 权限标识：`hotel:info:query`
+#### 页面组成
+
+1. 列表页
+   - 查询条件：城市、状态、标签
+   - 表格字段：LOGO、酒店名称、城市、状态、最后更新时间
+   - 操作：编辑、上架/下架、预览
+2. 编辑页 Tab
+   - 基础信息
+   - 图文详情
+   - 政策设置
+   - 房型预览
+
+#### 页面交互说明
+
+- 编辑页建议使用页面式编辑，不建议弹窗承载大量内容
+- 图文详情支持多图上传、拖拽排序、分类管理
+- 预览按钮可跳转模拟C端展示视图或弹窗预览
+
+### 3.2.2 房型管理
+
+#### 页面信息
+
+- 菜单名称：房型管理
+- 前端路由：`/hotel/operate/roomType`
+- 页面组件：[`yimamerchant-ui/src/views/hotel/operate/roomType/index.vue`](yimamerchant-ui/src/views/hotel/operate/roomType/index.vue)
+
+#### 页面组成
+
+1. 页面头部
+   - 酒店下拉选择器
+2. 查询区
+   - 房型名称
+   - 状态
+3. 列表区
+   - 房型名称
+   - 床型
+   - 入住人数
+   - 面积
+   - 窗户
+   - 状态
+   - 创建时间
+4. 操作区
+   - 新增
+   - 编辑
+   - 删除
+   - 启用/停售
+   - 排序
+5. 编辑弹窗
+   - 基础信息
+   - 设施属性
+   - 图文管理
+   - 销售设置
+
+#### 页面交互说明
+
+- 必须先选择酒店后再加载房型数据
+- 排序推荐结合 [`el-table`](yimamerchant-ui/src/views/hotel/operate/roomType/index.vue:1) + 拖拽插件实现
+- 图文上传可复用若依上传组件
+
+### 3.2.3 库存价格管理
+
+#### 页面信息
+
+- 菜单名称：库存价格管理
+- 前端路由：`/hotel/operate/price`
+- 页面组件：[`yimamerchant-ui/src/views/hotel/operate/price/index.vue`](yimamerchant-ui/src/views/hotel/operate/price/index.vue)
+
+#### 页面组成
+
+1. 双层筛选
+   - 酒店选择
+   - 房型选择（支持多选）
+2. 日历工具栏
+   - 月份切换
+   - 批量设置
+   - 批量关房
+   - 批量复制
+   - 恢复默认
+3. 日历表格区
+   - 日期
+   - 星期
+   - 价格字段（根据模式动态变化）
+   - 库存
+   - 退款规则
+   - 操作
+4. 单日编辑弹窗
+5. 批量设置弹窗
+6. 历史记录弹窗
+
+#### 页面交互说明
+
+- 该页面为核心运营页，建议采用自定义表格日历混合布局
+- 佣金模式不同，列头动态切换
+- 批量日期选择建议支持勾选与连续范围选择两种模式
+
+---
+
+## 3.3 交易与服务中心
+
+### 3.3.1 酒店订单
+
+#### 页面信息
+
+- 菜单名称：酒店订单
+- 前端路由：`/hotel/service/order`
+- 页面组件：[`yimamerchant-ui/src/views/hotel/service/order/index.vue`](yimamerchant-ui/src/views/hotel/service/order/index.vue)
+
+#### 页面组成
+
+1. 高级查询区
+   - 订单号
+   - 酒店/房型
+   - 下单时间范围
+   - 入住日期范围
+   - 订单状态
+   - 用户ID
+   - 手机号
+   - 所属BD
+2. 工具栏
+   - 批量确认
+   - 导出订单
+   - 发送通知
+3. 列表区
+   - 订单号
+   - 酒店
+   - 房型
+   - 入住/离店日期
+   - 订单金额
+   - 用户
+   - 下单时间
+   - 状态
+4. 详情抽屉 Tab
+   - 订单基本信息
+   - 用户与入住信息
+   - 酒店与房型信息
+   - 操作日志
+5. 操作弹窗
+   - 取消订单
+   - 添加备注
+   - 售后处理
+
+#### 页面交互说明
+
+- 订单详情建议使用右侧抽屉承载，提高处理效率
+- 列表操作按钮按状态动态控制显示
+- 订单状态变更后应局部刷新或回填当前行数据
+
+---
+
+## 3.4 财务结算中心
+
+### 3.4.1 账单管理
+
+#### 页面信息
+
+- 菜单名称：账单管理
+- 前端路由：`/hotel/finance/bill`
+- 列表页：[`yimamerchant-ui/src/views/hotel/finance/bill/index.vue`](yimamerchant-ui/src/views/hotel/finance/bill/index.vue)
+- 详情页：[`yimamerchant-ui/src/views/hotel/finance/bill/detail.vue`](yimamerchant-ui/src/views/hotel/finance/bill/detail.vue)
+
+#### 页面组成
+
+1. 查询区
+   - 酒店
+   - 状态
+   - 结算周期
+   - 生成时间
+2. 汇总区
+   - 当前筛选总金额
+   - 当前筛选总订单数
+3. 工具栏
+   - 手动生成账单
+   - 导出汇总
+   - 导出明细
+4. 列表区
+   - 账单号
+   - 酒店名称
+   - 结算周期
+   - 订单数量
+   - 结算金额
+   - 状态
+   - 生成时间
+5. 详情页
+   - 账单摘要卡片
+   - 订单明细表格
+   - 对账记录
+   - 付款记录
+   - 状态操作区
+
+#### 页面交互说明
+
+- 手动生成账单应先弹出预览窗口，再确认生成
+- 账单详情适合使用独立详情页承载复杂信息
+- 有争议状态下应允许发起重新核算
+
+---
+
+## 3.5 系统与配置
+
+### 3.5.1 酒店业务参数配置
+
+#### 页面信息
+
+- 菜单名称：酒店业务参数配置
+- 前端路由：`/hotel/config`
+- 页面组件：[`yimamerchant-ui/src/views/hotel/config/index.vue`](yimamerchant-ui/src/views/hotel/config/index.vue)
+
+#### 页面组成
+
+1. 酒店参数
+2. 订单参数
+3. 结算参数
+4. 通知模板参数
+
+#### 页面交互说明
+
+- 建议采用表单配置页 + 保存按钮模式
+- 配置项如需历史追溯，可增加配置变更日志
+
+---
+
+## 4. 后端接口设计
+
+## 4.1 统一设计规范
+
+### 4.1.1 控制器建议
+
+控制器建议命名如下：
+
+- [`HotelPendingController`](yimamerchant-admin/src/main/java/com/yimamerchant/web/controller/hotel/HotelPendingController.java:1)
+- [`HotelPartnerController`](yimamerchant-admin/src/main/java/com/yimamerchant/web/controller/hotel/HotelPartnerController.java:1)
+- [`HotelBindController`](yimamerchant-admin/src/main/java/com/yimamerchant/web/controller/hotel/HotelBindController.java:1)
+- [`HotelInfoController`](yimamerchant-admin/src/main/java/com/yimamerchant/web/controller/hotel/HotelInfoController.java:1)
+- [`HotelRoomTypeController`](yimamerchant-admin/src/main/java/com/yimamerchant/web/controller/hotel/HotelRoomTypeController.java:1)
+- [`HotelPriceController`](yimamerchant-admin/src/main/java/com/yimamerchant/web/controller/hotel/HotelPriceController.java:1)
+- [`HotelOrderController`](yimamerchant-admin/src/main/java/com/yimamerchant/web/controller/hotel/HotelOrderController.java:1)
+- [`HotelBillController`](yimamerchant-admin/src/main/java/com/yimamerchant/web/controller/hotel/HotelBillController.java:1)
+- [`HotelConfigController`](yimamerchant-admin/src/main/java/com/yimamerchant/web/controller/hotel/HotelConfigController.java:1)
+
+### 4.1.2 返回结构建议
+
+沿用若依标准响应结构：
+
+- 列表接口：[`TableDataInfo`](yimamerchant-common/src/main/java/com/yimamerchant/common/core/page/TableDataInfo.java:1)
+- 单体操作：[`AjaxResult`](yimamerchant-common/src/main/java/com/yimamerchant/common/core/domain/AjaxResult.java:1)
+
+### 4.1.3 通用字段建议
+
+所有主业务表建议保留以下字段：
+
+- `create_by`
+- `create_time`
+- `update_by`
+- `update_time`
+- `remark`
+- `del_flag`
+
+---
+
+## 4.2 酒店合作中心接口
+
+## 4.2.1 待签约酒店接口
+
+### 1. 查询待签约酒店列表
+
+- 方法：`GET`
+- 路径：`/hotel/cooperate/pending/list`
+- 控制器：[`HotelPendingController.list()`](yimamerchant-admin/src/main/java/com/yimamerchant/web/controller/hotel/HotelPendingController.java:1)
 
 #### 请求参数
 
-无。
+| 参数 | 类型 | 说明 |
+| --- | --- | --- |
+| hotelName | String | 酒店名称 |
+| applyStatus | String | 申请状态 |
+| beginApplyTime | String | 申请开始时间 |
+| endApplyTime | String | 申请结束时间 |
 
-#### 响应字段
+#### 返回字段
 
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| id | long | 酒店主键 |
-| merchantId | long | 商家编号 |
-| hotelName | string | 酒店名称 |
-| hotelCover | string | 酒店封面图 |
-| hotelImages | array<string> | 酒店轮播图 |
-| phone | string | 联系电话 |
-| provinceCode | string | 省编码 |
-| cityCode | string | 市编码 |
-| districtCode | string | 区编码 |
-| address | string | 详细地址 |
-| longitude | number | 经度 |
-| latitude | number | 纬度 |
-| checkInTime | string | 入住时间，格式 `HH:mm` |
-| checkOutTime | string | 离店时间，格式 `HH:mm` |
-| intro | string | 酒店简介 |
-| bookingNotice | string | 预订须知 |
-| cancelRule | string | 取消规则 |
-| invoiceDesc | string | 开票说明 |
-| parkingDesc | string | 停车说明 |
-| status | string | 酒店状态 |
-| remark | string | 备注 |
-| createTime | string | 创建时间 |
-| updateTime | string | 更新时间 |
+| 字段 | 说明 |
+| --- | --- |
+| id | 申请ID |
+| hotelName | 酒店名称 |
+| applyStatus | 申请状态 |
+| applicantName | 申请人 |
+| applicantPhone | 联系方式 |
+| applyTime | 申请时间 |
+| lastOperateTime | 最后操作时间 |
 
-#### 响应示例
+### 2. 获取申请详情
 
-```json
-{
-  "code": 200,
-  "msg": "查询成功",
-  "data": {
-    "id": 1,
-    "merchantId": 10001,
-    "hotelName": "逸马轻居酒店",
-    "hotelCover": "https://cdn.test.com/hotel/cover.jpg",
-    "hotelImages": [
-      "https://cdn.test.com/hotel/1.jpg",
-      "https://cdn.test.com/hotel/2.jpg"
-    ],
-    "phone": "13800138000",
-    "provinceCode": "310000",
-    "cityCode": "310100",
-    "districtCode": "310101",
-    "address": "南京东路100号",
-    "longitude": 121.473701,
-    "latitude": 31.230416,
-    "checkInTime": "14:00",
-    "checkOutTime": "12:00",
-    "intro": "靠近地铁站，出行方便",
-    "bookingNotice": "入住请携带身份证件",
-    "cancelRule": "入住前一天18:00前可免费取消",
-    "invoiceDesc": "支持开具住宿发票",
-    "parkingDesc": "提供免费停车位",
-    "status": "1",
-    "remark": ""
-  }
-}
-```
+- 方法：`GET`
+- 路径：`/hotel/cooperate/pending/{id}`
+- 控制器：[`HotelPendingController.getInfo()`](yimamerchant-admin/src/main/java/com/yimamerchant/web/controller/hotel/HotelPendingController.java:1)
 
-### 4.2 新增或保存酒店信息
+### 3. 新增申请
 
-- 请求方式：`POST`
-- 请求路径：`/hotel/info/save`
-- 权限标识：首次新增建议 `hotel:info:add`，已存在编辑建议 `hotel:info:edit`
+- 方法：`POST`
+- 路径：`/hotel/cooperate/pending`
+- 控制器：[`HotelPendingController.add()`](yimamerchant-admin/src/main/java/com/yimamerchant/web/controller/hotel/HotelPendingController.java:1)
 
-#### 请求体
+#### Body 示例
 
 ```json
 {
-  "hotelName": "逸马轻居酒店",
-  "hotelCover": "https://cdn.test.com/hotel/cover.jpg",
-  "hotelImages": [
-    "https://cdn.test.com/hotel/1.jpg",
-    "https://cdn.test.com/hotel/2.jpg"
-  ],
-  "phone": "13800138000",
-  "provinceCode": "310000",
-  "cityCode": "310100",
-  "districtCode": "310101",
-  "address": "南京东路100号",
-  "longitude": 121.473701,
-  "latitude": 31.230416,
-  "checkInTime": "14:00",
-  "checkOutTime": "12:00",
-  "intro": "靠近地铁站，出行方便",
-  "bookingNotice": "入住请携带身份证件",
-  "cancelRule": "入住前一天18:00前可免费取消",
-  "invoiceDesc": "支持开具住宿发票",
-  "parkingDesc": "提供免费停车位",
-  "status": "1",
-  "remark": ""
+  "hotelName": "杭州西湖湖景酒店",
+  "contactName": "王经理",
+  "contactPhone": "13800138000",
+  "provinceCode": "330000",
+  "cityCode": "330100",
+  "districtCode": "330106",
+  "address": "西湖区灵隐路88号",
+  "longitude": 120.12001,
+  "latitude": 30.22001,
+  "licenseFiles": "1,2,3",
+  "applyRemark": "重点合作酒店"
 }
 ```
 
-#### 请求字段说明
+### 4. 审核通过
 
-| 字段 | 必填 | 类型 | 说明 |
-|---|---|---|---|
-| hotelName | 是 | string | 酒店名称，最多 50 字 |
-| hotelCover | 是 | string | 酒店封面图 |
-| hotelImages | 否 | array<string> | 轮播图列表，建议最多 9 张 |
-| phone | 是 | string | 联系电话 |
-| provinceCode | 是 | string | 省编码 |
-| cityCode | 是 | string | 市编码 |
-| districtCode | 是 | string | 区编码 |
-| address | 是 | string | 详细地址，最多 255 字 |
-| longitude | 否 | number | 经度 |
-| latitude | 否 | number | 纬度 |
-| checkInTime | 是 | string | 入住时间 |
-| checkOutTime | 是 | string | 离店时间 |
-| intro | 否 | string | 酒店简介 |
-| bookingNotice | 否 | string | 预订须知 |
-| cancelRule | 否 | string | 取消规则 |
-| invoiceDesc | 否 | string | 开票说明 |
-| parkingDesc | 否 | string | 停车说明 |
-| status | 是 | string | 酒店状态 |
-| remark | 否 | string | 备注 |
+- 方法：`PUT`
+- 路径：`/hotel/cooperate/pending/approve`
+- 控制器：[`HotelPendingController.approve()`](yimamerchant-admin/src/main/java/com/yimamerchant/web/controller/hotel/HotelPendingController.java:1)
 
-#### 校验规则
+#### Body 参数
 
-- 当前商家仅允许存在一条酒店信息
-- `hotelName`、`hotelCover`、`phone`、`provinceCode`、`cityCode`、`districtCode`、`address`、`checkInTime`、`checkOutTime` 不能为空
-- `phone` 需通过手机号或座机格式校验
-- 经纬度若传值需满足数值格式要求
-- `status` 必须在 `hotel_status` 字典范围内
+| 参数 | 类型 | 说明 |
+| --- | --- | --- |
+| id | Long | 申请ID |
+| contractStartDate | String | 合同开始日期 |
+| contractEndDate | String | 合同结束日期 |
+| commissionMode | String | 佣金模式 |
+| bdUserId | Long | 归属BD |
+| auditRemark | String | 审核备注 |
 
-#### 响应示例
+### 5. 审核驳回
+
+- 方法：`PUT`
+- 路径：`/hotel/cooperate/pending/reject`
+- 控制器：[`HotelPendingController.reject()`](yimamerchant-admin/src/main/java/com/yimamerchant/web/controller/hotel/HotelPendingController.java:1)
+
+### 6. 删除申请
+
+- 方法：`DELETE`
+- 路径：`/hotel/cooperate/pending/{ids}`
+- 控制器：[`HotelPendingController.remove()`](yimamerchant-admin/src/main/java/com/yimamerchant/web/controller/hotel/HotelPendingController.java:1)
+
+### 7. 导出申请列表
+
+- 方法：`POST`
+- 路径：`/hotel/cooperate/pending/export`
+- 控制器：[`HotelPendingController.export()`](yimamerchant-admin/src/main/java/com/yimamerchant/web/controller/hotel/HotelPendingController.java:1)
+
+## 4.2.2 合作酒店接口
+
+### 1. 查询合作酒店列表
+
+- 方法：`GET`
+- 路径：`/hotel/cooperate/partner/list`
+
+### 2. 获取合作酒店详情
+
+- 方法：`GET`
+- 路径：`/hotel/cooperate/partner/{hotelId}`
+
+### 3. 更新合作酒店信息
+
+- 方法：`PUT`
+- 路径：`/hotel/cooperate/partner`
+
+### 4. 更新合作状态
+
+- 方法：`PUT`
+- 路径：`/hotel/cooperate/partner/status`
+
+#### Body 参数
+
+| 参数 | 类型 | 说明 |
+| --- | --- | --- |
+| hotelId | Long | 酒店ID |
+| cooperateStatus | String | 合作状态 |
+| operateReason | String | 处理原因 |
+
+### 5. 获取合作酒店统计
+
+- 方法：`GET`
+- 路径：`/hotel/cooperate/partner/statistics`
+
+### 6. 导出合作酒店
+
+- 方法：`POST`
+- 路径：`/hotel/cooperate/partner/export`
+
+### 7. 重置酒店账号密码
+
+- 方法：`PUT`
+- 路径：`/hotel/cooperate/partner/resetPassword`
+
+### 8. 获取酒店子账号列表
+
+- 方法：`GET`
+- 路径：`/hotel/cooperate/partner/account/list`
+
+## 4.2.3 BD归属管理接口
+
+### 1. 查询归属关系列表
+
+- 方法：`GET`
+- 路径：`/hotel/cooperate/bind/list`
+
+### 2. 批量绑定
+
+- 方法：`POST`
+- 路径：`/hotel/cooperate/bind/batch`
+
+#### Body 示例
 
 ```json
 {
-  "code": 200,
-  "msg": "保存成功"
+  "bdUserId": 100,
+  "hotelIds": [1, 2, 3],
+  "remark": "新签酒店批量绑定"
 }
 ```
 
-### 4.3 修改酒店状态
+### 3. 批量解绑
 
-- 请求方式：`PUT`
-- 请求路径：`/hotel/info/changeStatus`
-- 权限标识：`hotel:info:edit`
+- 方法：`DELETE`
+- 路径：`/hotel/cooperate/bind/{ids}`
 
-#### 请求体
+### 4. 批量转移
+
+- 方法：`PUT`
+- 路径：`/hotel/cooperate/bind/transfer`
+
+#### Body 示例
 
 ```json
 {
-  "id": 1,
-  "status": "2"
+  "sourceBdUserId": 100,
+  "targetBdUserId": 101,
+  "hotelIds": [1, 2],
+  "transferReason": "组织调整"
 }
 ```
 
-#### 说明
+### 5. 查询绑定历史
 
-用于快速变更酒店状态，例如启用、停业。
+- 方法：`GET`
+- 路径：`/hotel/cooperate/bind/history`
+
+### 6. 获取BD下拉选项
+
+- 方法：`GET`
+- 路径：`/hotel/cooperate/bind/bdOptions`
+
+### 7. 获取酒店下拉选项
+
+- 方法：`GET`
+- 路径：`/hotel/cooperate/bind/hotelOptions`
 
 ---
 
-## 5. 房型管理接口
+## 4.3 酒店运营中心接口
 
-接口前缀：`/hotel/roomType`
+## 4.3.1 酒店信息接口
 
-对应核心表：[`hotel_room_type`](sql/hotel.sql)、[`hotel_room_type_facility_rel`](sql/hotel.sql)
+### 1. 查询酒店列表
 
-### 5.1 分页查询房型列表
+- 方法：`GET`
+- 路径：`/hotel/operate/info/list`
 
-- 请求方式：`GET`
-- 请求路径：`/hotel/roomType/list`
-- 权限标识：`hotel:roomType:query`
+### 2. 获取酒店详情
 
-#### 查询参数
+- 方法：`GET`
+- 路径：`/hotel/operate/info/{hotelId}`
 
-| 参数 | 必填 | 类型 | 说明 |
-|---|---|---|---|
-| pageNum | 否 | int | 页码 |
-| pageSize | 否 | int | 每页条数 |
-| roomTypeName | 否 | string | 房型名称 |
-| configStatus | 否 | string | 配置状态 |
-| saleStatus | 否 | string | 上架状态 |
+### 3. 新增酒店
 
-#### 列表行字段
+- 方法：`POST`
+- 路径：`/hotel/operate/info`
 
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| id | long | 房型主键 |
-| hotelId | long | 酒店编号 |
-| merchantId | long | 商家编号 |
-| roomTypeName | string | 房型名称 |
-| roomTypeCode | string | 房型编码 |
-| roomImages | array<string> | 房型图片 |
-| firstImage | string | 首图 |
-| bedType | string | 床型 |
-| bedTypeLabel | string | 床型名称 |
-| peopleLimit | int | 可住人数 |
-| basePrice | number | 默认价格 |
-| marketPrice | number | 划线价 |
-| baseStock | int | 默认库存 |
-| soldNum | int | 已售数量 |
-| availableNum | int | 剩余可售，建议服务端计算 |
-| configStatus | string | 配置状态 |
-| saleStatus | string | 上架状态 |
-| bookableFlag | string | 是否可预订 |
-| sortNum | int | 排序号 |
-| updateTime | string | 更新时间 |
+### 4. 更新酒店信息
 
-#### 响应示例
+- 方法：`PUT`
+- 路径：`/hotel/operate/info`
 
-```json
-{
-  "code": 200,
-  "msg": "查询成功",
-  "rows": [
-    {
-      "id": 101,
-      "hotelId": 1,
-      "merchantId": 10001,
-      "roomTypeName": "豪华大床房",
-      "roomTypeCode": "DLX-DB-01",
-      "roomImages": [
-        "https://cdn.test.com/room/101-1.jpg"
-      ],
-      "firstImage": "https://cdn.test.com/room/101-1.jpg",
-      "bedType": "1",
-      "bedTypeLabel": "大床",
-      "peopleLimit": 2,
-      "basePrice": 299.00,
-      "marketPrice": 399.00,
-      "baseStock": 20,
-      "soldNum": 3,
-      "availableNum": 17,
-      "configStatus": "1",
-      "saleStatus": "1",
-      "bookableFlag": "Y",
-      "sortNum": 1,
-      "updateTime": "2026-03-18 21:00:00"
-    }
-  ],
-  "total": 1
-}
-```
+### 5. 更新上下架状态
 
-### 5.2 查询房型详情
+- 方法：`PUT`
+- 路径：`/hotel/operate/info/status`
 
-- 请求方式：`GET`
-- 请求路径：`/hotel/roomType/{id}`
-- 权限标识：`hotel:roomType:query`
+### 6. 获取酒店下拉选项
 
-#### 响应字段补充
+- 方法：`GET`
+- 路径：`/hotel/operate/info/options`
 
-除基础字段外，建议额外返回：
+### 7. 获取酒店变更日志
 
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| facilityIds | array<long> | 已绑定设施编号 |
-| description | string | 房型描述 |
-| floorDesc | string | 楼层描述 |
-| area | string | 面积说明 |
-| windowType | string | 窗型 |
-| breakfastCount | int | 早餐数 |
-| extraBedFlag | string | 是否可加床 |
-| remark | string | 备注 |
+- 方法：`GET`
+- 路径：`/hotel/operate/info/changeLog`
 
-### 5.3 新增房型
+## 4.3.2 房型管理接口
 
-- 请求方式：`POST`
-- 请求路径：`/hotel/roomType`
-- 权限标识：`hotel:roomType:add`
+### 1. 查询房型列表
 
-#### 请求体
+- 方法：`GET`
+- 路径：`/hotel/operate/roomType/list`
 
-```json
-{
-  "roomTypeName": "豪华大床房",
-  "roomTypeCode": "DLX-DB-01",
-  "roomImages": [
-    "https://cdn.test.com/room/101-1.jpg",
-    "https://cdn.test.com/room/101-2.jpg"
-  ],
-  "bedType": "1",
-  "peopleLimit": 2,
-  "area": "30㎡",
-  "floorDesc": "10-15层",
-  "windowType": "1",
-  "breakfastCount": 2,
-  "extraBedFlag": "N",
-  "description": "含独立卫浴与景观窗",
-  "basePrice": 299.00,
-  "marketPrice": 399.00,
-  "baseStock": 20,
-  "configStatus": "1",
-  "saleStatus": "0",
-  "bookableFlag": "Y",
-  "sortNum": 1,
-  "remark": "主推房型",
-  "facilityIds": [1, 2, 3, 4]
-}
-```
+#### 请求参数
 
-#### 核心校验规则
+| 参数 | 类型 | 说明 |
+| --- | --- | --- |
+| hotelId | Long | 酒店ID，必填 |
+| roomTypeName | String | 房型名称 |
+| saleStatus | String | 状态 |
 
-- 当前商家必须已存在酒店信息
-- `roomTypeName`、`roomTypeCode`、`roomImages`、`bedType`、`peopleLimit`、`configStatus`、`bookableFlag` 必填
-- 同一酒店下 `room_type_name` 不可重复，对应 [`uk_hotel_room_type_name`](sql/hotel.sql)
-- 同一酒店下 `room_type_code` 不可重复，对应 [`uk_hotel_room_type_code`](sql/hotel.sql)
-- `peopleLimit`、`breakfastCount`、`baseStock`、`sortNum` 不得小于 0
-- `basePrice`、`marketPrice` 若传入则需大于等于 0，且最多两位小数
-- `saleStatus` 初始建议默认为 `0`
-- `facilityIds` 若传入，需校验设施存在且状态启用
+### 2. 获取房型详情
 
-#### 响应示例
+- 方法：`GET`
+- 路径：`/hotel/operate/roomType/{id}`
+
+### 3. 新增房型
+
+- 方法：`POST`
+- 路径：`/hotel/operate/roomType`
+
+### 4. 更新房型
+
+- 方法：`PUT`
+- 路径：`/hotel/operate/roomType`
+
+### 5. 删除房型
+
+- 方法：`DELETE`
+- 路径：`/hotel/operate/roomType/{ids}`
+
+### 6. 更新房型状态
+
+- 方法：`PUT`
+- 路径：`/hotel/operate/roomType/status`
+
+### 7. 更新房型排序
+
+- 方法：`PUT`
+- 路径：`/hotel/operate/roomType/sort`
+
+### 8. 批量复制房型配置
+
+- 方法：`POST`
+- 路径：`/hotel/operate/roomType/copy`
+
+## 4.3.3 库存价格接口
+
+### 1. 获取价格日历
+
+- 方法：`GET`
+- 路径：`/hotel/operate/price/calendar`
+
+#### 请求参数
+
+| 参数 | 类型 | 说明 |
+| --- | --- | --- |
+| hotelId | Long | 酒店ID |
+| roomTypeIds | String | 房型ID集合，逗号分隔 |
+| month | String | 月份，如 `2026-03` |
+
+### 2. 设置单日价格库存
+
+- 方法：`POST`
+- 路径：`/hotel/operate/price/daily`
+
+### 3. 批量设置价格库存
+
+- 方法：`POST`
+- 路径：`/hotel/operate/price/batch`
+
+### 4. 批量关房
+
+- 方法：`POST`
+- 路径：`/hotel/operate/price/close`
+
+### 5. 批量复制价格库存
+
+- 方法：`POST`
+- 路径：`/hotel/operate/price/copy`
+
+### 6. 恢复默认设置
+
+- 方法：`POST`
+- 路径：`/hotel/operate/price/restore`
+
+### 7. 查询价格修改历史
+
+- 方法：`GET`
+- 路径：`/hotel/operate/price/history`
+
+#### 单日/批量设置 Body 建议
 
 ```json
 {
-  "code": 200,
-  "msg": "新增成功"
-}
-```
-
-### 5.4 修改房型
-
-- 请求方式：`PUT`
-- 请求路径：`/hotel/roomType`
-- 权限标识：`hotel:roomType:edit`
-
-#### 请求说明
-
-请求体与新增接口一致，但需携带 `id`。
-
-```json
-{
-  "id": 101,
-  "roomTypeName": "豪华大床房",
-  "roomTypeCode": "DLX-DB-01",
-  "roomImages": [
-    "https://cdn.test.com/room/101-1.jpg"
-  ],
-  "bedType": "1",
-  "peopleLimit": 2,
-  "basePrice": 329.00,
-  "marketPrice": 429.00,
-  "baseStock": 18,
-  "configStatus": "1",
-  "saleStatus": "1",
-  "bookableFlag": "Y",
-  "facilityIds": [1, 2, 3]
-}
-```
-
-### 5.5 删除房型
-
-- 请求方式：`DELETE`
-- 请求路径：`/hotel/roomType/{id}`
-- 权限标识：`hotel:roomType:remove`
-
-#### 删除规则
-
-- 仅允许删除当前商家名下房型
-- 若已有关联订单、退款单、房态库存明细或其他经营数据，禁止删除
-- 删除建议采用逻辑删除，更新 `del_flag=2`
-- 删除时同步清理房型设施关联表数据
-
-### 5.6 修改房型配置状态
-
-- 请求方式：`PUT`
-- 请求路径：`/hotel/roomType/changeConfigStatus`
-- 权限标识：`hotel:roomType:edit`
-
-#### 请求体
-
-```json
-{
-  "id": 101,
-  "configStatus": "0"
-}
-```
-
-#### 业务规则
-
-- 停用后可禁止继续上架与预订
-- 若房型已上架，停用时建议自动下架或拒绝停用，二选一并在实现中固定
-
-### 5.7 修改房型上架状态
-
-- 请求方式：`PUT`
-- 请求路径：`/hotel/roomType/changeSaleStatus`
-- 权限标识：`hotel:roomType:changeStatus`
-
-#### 请求体
-
-```json
-{
-  "id": 101,
-  "saleStatus": "1"
-}
-```
-
-#### 上架校验建议
-
-- 房型必须属于当前商家
-- 房型 `configStatus=1`
-- `bookableFlag=Y`
-- `basePrice` 不为空且大于 0
-- `baseStock` 不小于 0
-- 房型图片、床型、可住人数等核心信息完整
-
-### 5.8 房型完整性校验接口（建议新增）
-
-- 请求方式：`GET`
-- 请求路径：`/hotel/roomType/checkComplete/{id}`
-- 权限标识：`hotel:roomType:query`
-
-#### 响应示例
-
-```json
-{
-  "code": 200,
-  "msg": "校验完成",
-  "data": {
-    "pass": false,
-    "message": "默认价格不能为空",
-    "missingFields": [
-      "basePrice"
-    ]
-  }
+  "hotelId": 1,
+  "roomTypeIds": [11, 12],
+  "bizDates": ["2026-03-21", "2026-03-22"],
+  "settlementPrice": 300.00,
+  "salePrice": 368.00,
+  "commissionRate": 0.12,
+  "inventory": 20,
+  "refundRule": "TIME_LIMIT",
+  "specialTag": "HOLIDAY"
 }
 ```
 
 ---
 
-## 6. 设施接口
+## 4.4 交易与服务中心接口
 
-接口前缀：`/hotel/facility`
+## 4.4.1 酒店订单接口
 
-对应核心表：[`hotel_facility`](sql/hotel.sql)、[`hotel_room_type_facility_rel`](sql/hotel.sql)
+### 1. 查询订单列表
 
-### 6.1 查询设施列表
+- 方法：`GET`
+- 路径：`/hotel/service/order/list`
 
-- 请求方式：`GET`
-- 请求路径：`/hotel/facility/list`
-- 权限标识：建议复用 `hotel:roomType:query`
+### 2. 获取订单详情
 
-#### 查询参数
+- 方法：`GET`
+- 路径：`/hotel/service/order/{orderNo}`
 
-| 参数 | 必填 | 类型 | 说明 |
-|---|---|---|---|
-| facilityType | 否 | string | 设施分类 |
-| status | 否 | string | 状态，默认查启用 |
+### 3. 订单确认
 
-#### 响应示例
+- 方法：`PUT`
+- 路径：`/hotel/service/order/confirm`
 
-```json
-{
-  "code": 200,
-  "msg": "查询成功",
-  "data": [
-    {
-      "id": 1,
-      "facilityName": "WiFi",
-      "facilityType": "1",
-      "facilityTypeLabel": "房间设施",
-      "status": "1",
-      "sortNum": 1
-    }
-  ]
-}
-```
+### 4. 取消订单
 
-### 6.2 查询房型已绑定设施
+- 方法：`PUT`
+- 路径：`/hotel/service/order/cancel`
 
-- 请求方式：`GET`
-- 请求路径：`/hotel/facility/roomType/{roomTypeId}`
-- 权限标识：`hotel:roomType:query`
+### 5. 办理入住
 
-#### 响应示例
+- 方法：`PUT`
+- 路径：`/hotel/service/order/checkin`
 
-```json
-{
-  "code": 200,
-  "msg": "查询成功",
-  "data": [1, 2, 3, 4]
-}
-```
+### 6. 办理离店
 
-### 6.3 保存房型设施绑定
+- 方法：`PUT`
+- 路径：`/hotel/service/order/checkout`
 
-- 请求方式：`POST`
-- 请求路径：`/hotel/facility/saveRoomTypeFacilities`
-- 权限标识：`hotel:roomType:edit`
+### 7. 添加备注
 
-#### 请求体
+- 方法：`POST`
+- 路径：`/hotel/service/order/remark`
 
-```json
-{
-  "roomTypeId": 101,
-  "facilityIds": [1, 2, 3, 4]
-}
-```
+### 8. 导出订单
 
-#### 业务规则
+- 方法：`POST`
+- 路径：`/hotel/service/order/export`
 
-- 先删除该房型已有绑定，再批量插入新绑定
-- 需校验 `roomTypeId` 属于当前商家
-- 需校验设施编号合法
+### 9. 查询操作日志
+
+- 方法：`GET`
+- 路径：`/hotel/service/order/logs`
+
+### 10. 提交退款申请处理
+
+- 方法：`POST`
+- 路径：`/hotel/service/order/refund`
+
+### 11. 提交纠纷处理
+
+- 方法：`POST`
+- 路径：`/hotel/service/order/dispute`
 
 ---
 
-## 7. 库存价格管理接口
+## 4.5 财务结算中心接口
 
-接口前缀：`/hotel/inventory`
+## 4.5.1 账单管理接口
 
-一期核心使用 [`hotel_room_type`](sql/hotel.sql) 中 `base_price`、`market_price`、`base_stock`、`sold_num` 字段实现默认经营管理；[`hotel_room_inventory`](sql/hotel.sql) 作为二期按日房态预留表。
+### 1. 查询账单列表
 
-### 7.1 分页查询库存价格列表
+- 方法：`GET`
+- 路径：`/hotel/finance/bill/list`
 
-- 请求方式：`GET`
-- 请求路径：`/hotel/inventory/list`
-- 权限标识：`hotel:inventory:query`
+### 2. 生成账单
 
-#### 查询参数
+- 方法：`POST`
+- 路径：`/hotel/finance/bill/generate`
 
-| 参数 | 必填 | 类型 | 说明 |
-|---|---|---|---|
-| pageNum | 否 | int | 页码 |
-| pageSize | 否 | int | 每页条数 |
-| roomTypeName | 否 | string | 房型名称 |
-| saleStatus | 否 | string | 上架状态 |
-| bookableFlag | 否 | string | 是否可预订 |
-
-#### 响应行字段
-
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| id | long | 房型编号 |
-| roomTypeName | string | 房型名称 |
-| salePrice | number | 销售价，映射 `basePrice` |
-| marketPrice | number | 划线价 |
-| baseStock | int | 默认库存 |
-| soldNum | int | 已售数量 |
-| availableNum | int | 剩余可售 |
-| saleStatus | string | 上架状态 |
-| bookableFlag | string | 是否可预订 |
-| updateTime | string | 更新时间 |
-
-### 7.2 修改单个房型默认价格
-
-- 请求方式：`PUT`
-- 请求路径：`/hotel/inventory/updateBasePrice`
-- 权限标识：`hotel:inventory:edit`
-
-#### 请求体
+#### Body 示例
 
 ```json
 {
-  "roomTypeId": 101,
-  "basePrice": 299.00,
-  "marketPrice": 399.00
+  "hotelId": 1,
+  "statementStartDate": "2026-03-01",
+  "statementEndDate": "2026-03-31",
+  "generateMode": "MANUAL"
 }
 ```
 
-#### 校验规则
+### 3. 获取账单详情
 
-- `basePrice` 必须大于等于 0
-- `marketPrice` 若传值必须大于等于 0
-- 金额最多两位小数
+- 方法：`GET`
+- 路径：`/hotel/finance/bill/{billNo}`
 
-### 7.3 修改单个房型默认库存
+### 4. 获取账单订单明细
 
-- 请求方式：`PUT`
-- 请求路径：`/hotel/inventory/updateBaseStock`
-- 权限标识：`hotel:inventory:edit`
+- 方法：`GET`
+- 路径：`/hotel/finance/bill/orders`
 
-#### 请求体
+### 5. 确认账单
 
-```json
-{
-  "roomTypeId": 101,
-  "baseStock": 20
-}
-```
+- 方法：`PUT`
+- 路径：`/hotel/finance/bill/confirm`
 
-#### 校验规则
+### 6. 提出异议
 
-- `baseStock` 不得小于 0
-- 若系统已接入订单，需校验新库存不小于已售数量，或在服务端自动修正为 `availableNum = max(baseStock - soldNum, 0)`
+- 方法：`PUT`
+- 路径：`/hotel/finance/bill/dispute`
 
-### 7.4 批量修改价格库存
+### 7. 重新核算
 
-- 请求方式：`PUT`
-- 请求路径：`/hotel/inventory/batchUpdate`
-- 权限标识：`hotel:inventory:batchEdit`
+- 方法：`PUT`
+- 路径：`/hotel/finance/bill/recalculate`
 
-#### 请求体
+### 8. 发起付款
 
-```json
-{
-  "roomTypeIds": [101, 102, 103],
-  "basePrice": 319.00,
-  "marketPrice": 419.00,
-  "baseStock": 30
-}
-```
+- 方法：`POST`
+- 路径：`/hotel/finance/bill/payment`
 
-#### 说明
+### 9. 导出账单汇总
 
-支持部分字段批量更新：
+- 方法：`GET`
+- 路径：`/hotel/finance/bill/export`
 
-- 仅更新价格
-- 仅更新库存
-- 同时更新价格与库存
+### 10. 获取账单统计
 
-### 7.5 修改可预订状态
-
-- 请求方式：`PUT`
-- 请求路径：`/hotel/inventory/changeBookableFlag`
-- 权限标识：`hotel:inventory:changeStatus`
-
-#### 请求体
-
-```json
-{
-  "roomTypeId": 101,
-  "bookableFlag": "N"
-}
-```
-
-### 7.6 修改上下架状态
-
-- 请求方式：`PUT`
-- 请求路径：`/hotel/inventory/changeSaleStatus`
-- 权限标识：`hotel:inventory:changeStatus`
-
-#### 请求体
-
-```json
-{
-  "roomTypeId": 101,
-  "saleStatus": "1"
-}
-```
-
-#### 业务说明
-
-该接口与 [`/hotel/roomType/changeSaleStatus`](plans/hotel-Interface-design.md) 存在能力重叠，建议二选一：
-
-- 方案 A：房型管理维护上下架，库存价格页仅调用房型状态接口
-- 方案 B：库存页保留独立接口，但内部复用同一服务方法
-
-为了避免状态维护分散，推荐采用方案 A。
+- 方法：`GET`
+- 路径：`/hotel/finance/bill/statistics`
 
 ---
 
-## 8. 退款管理接口
+## 4.6 系统配置接口
 
-接口前缀：`/hotel/refund`
+## 4.6.1 酒店业务参数接口
 
-对应核心表：[`hotel_refund_order`](sql/hotel.sql)
+### 1. 获取业务参数
 
-### 8.1 分页查询退款列表
+- 方法：`GET`
+- 路径：`/hotel/config/get`
 
-- 请求方式：`GET`
-- 请求路径：`/hotel/refund/list`
-- 权限标识：`hotel:refund:query`
+### 2. 保存业务参数
 
-#### 查询参数
+- 方法：`PUT`
+- 路径：`/hotel/config/save`
 
-| 参数 | 必填 | 类型 | 说明 |
-|---|---|---|---|
-| pageNum | 否 | int | 页码 |
-| pageSize | 否 | int | 每页条数 |
-| orderNo | 否 | string | 订单号 |
-| refundNo | 否 | string | 退款单号 |
-| roomTypeName | 否 | string | 房型名称 |
-| refundStatus | 否 | string | 退款状态 |
-| beginApplyTime | 否 | string | 申请开始时间 |
-| endApplyTime | 否 | string | 申请结束时间 |
-| beginCheckInDate | 否 | string | 入住开始日期 |
-| endCheckInDate | 否 | string | 入住结束日期 |
+### 3. 获取配置变更日志
 
-#### 列表行字段
-
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| id | long | 退款单主键 |
-| refundNo | string | 退款单号 |
-| orderId | long | 订单编号 |
-| orderNo | string | 订单号 |
-| roomTypeId | long | 房型编号 |
-| roomTypeName | string | 房型名称 |
-| guestName | string | 入住人 |
-| guestPhone | string | 联系电话 |
-| checkInDate | string | 入住日期 |
-| checkOutDate | string | 离店日期 |
-| orderAmount | number | 订单金额 |
-| applyRefundAmount | number | 申请退款金额 |
-| refundStatus | string | 退款状态 |
-| refundStatusLabel | string | 退款状态名称 |
-| createTime | string | 申请时间 |
-| auditTime | string | 处理时间 |
-
-### 8.2 查询退款详情
-
-- 请求方式：`GET`
-- 请求路径：`/hotel/refund/{id}`
-- 权限标识：`hotel:refund:detail`
-
-#### 响应字段补充
-
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| refundReason | string | 退款原因 |
-| auditRemark | string | 审核备注 |
-| auditBy | string | 审核人 |
-| cancelRule | string | 取消规则说明，可从酒店或订单快照补充 |
-
-#### 响应示例
-
-```json
-{
-  "code": 200,
-  "msg": "查询成功",
-  "data": {
-    "id": 501,
-    "refundNo": "RF202603180001",
-    "orderId": 90001,
-    "orderNo": "HT202603180001",
-    "roomTypeId": 101,
-    "roomTypeName": "豪华大床房",
-    "guestName": "张三",
-    "guestPhone": "13800138000",
-    "checkInDate": "2026-03-20",
-    "checkOutDate": "2026-03-21",
-    "orderAmount": 299.00,
-    "applyRefundAmount": 299.00,
-    "refundReason": "行程变更",
-    "refundStatus": "1",
-    "auditRemark": "",
-    "cancelRule": "入住前一天18:00前可免费取消",
-    "createTime": "2026-03-18 10:00:00"
-  }
-}
-```
-
-### 8.3 同意退款
-
-- 请求方式：`POST`
-- 请求路径：`/hotel/refund/approve`
-- 权限标识：`hotel:refund:audit`
-
-#### 请求体
-
-```json
-{
-  "id": 501,
-  "auditRemark": "符合取消规则，同意退款"
-}
-```
-
-#### 业务规则
-
-- 仅允许处理 `refundStatus=1` 的记录
-- 审核成功后更新状态为 `2`
-- 记录 `auditBy`、`auditTime`
-- 一期先完成商家审核状态流转，不做自动打款
-
-### 8.4 拒绝退款
-
-- 请求方式：`POST`
-- 请求路径：`/hotel/refund/reject`
-- 权限标识：`hotel:refund:audit`
-
-#### 请求体
-
-```json
-{
-  "id": 501,
-  "auditRemark": "已超过可免费取消时间，拒绝退款"
-}
-```
-
-#### 业务规则
-
-- 仅允许处理 `refundStatus=1` 的记录
-- `auditRemark` 必填
-- 审核成功后更新状态为 `3`
-- 记录 `auditBy`、`auditTime`
+- 方法：`GET`
+- 路径：`/hotel/config/logs`
 
 ---
 
-## 9. 推荐 DTO / VO 设计
+## 5. 数据库设计说明
 
-建议在 [`yimamerchant-system/src/main/java/com/yimamerchant/system`](yimamerchant-system/src/main/java/com/yimamerchant/system) 下补充如下对象：
+## 5.1 建表范围
 
-### 9.1 酒店信息
+本次酒店业务 SQL 脚本输出到 [`sql/hotel.sql`](sql/hotel.sql)，建议覆盖以下核心表：
 
-- `HotelInfoForm`
-- `HotelInfoVO`
+1. 酒店申请表
+2. 酒店申请审核日志表
+3. 合作酒店主表
+4. 酒店合同表
+5. 酒店账号表
+6. BD酒店绑定表
+7. BD酒店绑定历史表
+8. 酒店资料表
+9. 酒店图片表
+10. 房型表
+11. 房型图片表
+12. 房价库存日历表
+13. 房价库存修改日志表
+14. 酒店订单主表
+15. 酒店订单入住人表
+16. 酒店订单日志表
+17. 酒店账单主表
+18. 酒店账单明细表
+19. 酒店账单对账日志表
+20. 酒店付款记录表
+21. 酒店业务配置表
+22. 酒店业务配置日志表
 
-### 9.2 房型管理
+## 5.2 编码与命名建议
 
-- `HotelRoomTypeQuery`
-- `HotelRoomTypeForm`
-- `HotelRoomTypeVO`
-- `HotelRoomTypeDetailVO`
-- `HotelRoomTypeStatusForm`
+- 表名前缀统一建议：`hotel_`
+- 主键字段统一使用 `BIGINT`
+- 状态字段统一使用 `VARCHAR(32)` 或 `CHAR(1)`
+- 金额字段统一使用 `DECIMAL(12,2)`
+- 比例字段统一使用 `DECIMAL(8,4)`
+- 日期字段按业务语义区分 `DATETIME` 与 `DATE`
 
-### 9.3 设施绑定
+## 5.3 核心表关系说明
 
-- `HotelFacilityQuery`
-- `HotelRoomTypeFacilityForm`
+### 1. 酒店合作关系链
 
-### 9.4 库存价格
+- `hotel_pending_apply` → `hotel_partner` → `hotel_profile`
 
-- `HotelInventoryQuery`
-- `HotelInventoryBatchForm`
-- `HotelInventoryPriceForm`
-- `HotelInventoryStockForm`
-- `HotelInventoryStatusForm`
-- `HotelInventoryVO`
+### 2. BD归属关系链
 
-### 9.5 退款管理
+- `hotel_partner` ← `hotel_bd_bind` → `sys_user`
+- 历史记录落表 `hotel_bd_bind_history`
 
-- `HotelRefundQuery`
-- `HotelRefundAuditForm`
-- `HotelRefundVO`
-- `HotelRefundDetailVO`
+### 3. 商品关系链
+
+- `hotel_partner` → `hotel_room_type` → `hotel_room_type_image`
+- `hotel_room_type` → `hotel_room_calendar`
+
+### 4. 交易关系链
+
+- `hotel_order` → `hotel_order_guest`
+- `hotel_order` → `hotel_order_log`
+
+### 5. 结算关系链
+
+- `hotel_bill` → `hotel_bill_order`
+- `hotel_bill` → `hotel_bill_check_log`
+- `hotel_bill` → `hotel_bill_payment`
 
 ---
 
-## 10. 错误码与提示语建议
+## 6. 后端实现建议
 
-| 场景 | 建议提示 |
-|---|---|
-| 当前商家未创建酒店 | 当前商家尚未维护酒店信息，请先完善酒店资料 |
-| 房型名称重复 | 同一酒店下房型名称不能重复 |
-| 房型编码重复 | 同一酒店下房型编码不能重复 |
-| 房型不存在 | 房型不存在或无权操作 |
-| 房型不可上架 | 房型基础信息不完整，无法上架 |
-| 库存非法 | 默认库存不能小于 0 |
-| 金额非法 | 金额格式不正确或小于 0 |
-| 退款状态非法 | 当前退款单状态已变更，请刷新后重试 |
-| 拒绝退款未填备注 | 拒绝退款时审核备注不能为空 |
-| 删除受限 | 当前房型已有关联经营数据，不能删除 |
+## 6.1 Domain 建议
+
+建议在 [`yimamerchant-system/src/main/java/com/yimamerchant/system/hotel/domain`](yimamerchant-system/src/main/java/com/yimamerchant/system/hotel/domain) 下建立领域对象，例如：
+
+- [`HotelPendingApply`](yimamerchant-system/src/main/java/com/yimamerchant/system/hotel/domain/HotelPendingApply.java:1)
+- [`HotelPartner`](yimamerchant-system/src/main/java/com/yimamerchant/system/hotel/domain/HotelPartner.java:1)
+- [`HotelBdBind`](yimamerchant-system/src/main/java/com/yimamerchant/system/hotel/domain/HotelBdBind.java:1)
+- [`HotelProfile`](yimamerchant-system/src/main/java/com/yimamerchant/system/hotel/domain/HotelProfile.java:1)
+- [`HotelRoomType`](yimamerchant-system/src/main/java/com/yimamerchant/system/hotel/domain/HotelRoomType.java:1)
+- [`HotelRoomCalendar`](yimamerchant-system/src/main/java/com/yimamerchant/system/hotel/domain/HotelRoomCalendar.java:1)
+- [`HotelOrder`](yimamerchant-system/src/main/java/com/yimamerchant/system/hotel/domain/HotelOrder.java:1)
+- [`HotelBill`](yimamerchant-system/src/main/java/com/yimamerchant/system/hotel/domain/HotelBill.java:1)
+
+## 6.2 DTO/VO 建议
+
+对于复杂查询和详情聚合，建议增加 DTO/VO：
+
+- 待审核酒店审核 DTO
+- 合作酒店详情 VO
+- 日历价格批量设置 DTO
+- 订单详情 VO
+- 账单详情 VO
+
+## 6.3 Mapper 与 XML 建议
+
+Mapper 接口建议放在 [`yimamerchant-system/src/main/java/com/yimamerchant/system/hotel/mapper`](yimamerchant-system/src/main/java/com/yimamerchant/system/hotel/mapper)。
+
+XML 建议放在 [`yimamerchant-system/src/main/resources/mapper/hotel`](yimamerchant-system/src/main/resources/mapper/hotel)。
+
+复杂场景建议使用 XML：
+
+- 账单生成
+- 订单复杂筛选
+- 房价日历批量查询
+- 合作酒店详情聚合
 
 ---
 
-## 11. 联调建议
+## 7. 权限与字典建议
 
-- 前端房型管理页和库存价格页尽量复用相同状态变更服务，避免接口职责重叠
-- `roomImages`、`hotelImages` 建议接口层统一使用数组，持久化时在服务层转换为 JSON 字符串
-- 字典数据可在页面初始化时通过若依字典接口统一获取
-- 退款详情中的 `cancelRule` 建议优先取订单下单时快照，避免酒店后续修改规则影响历史单据展示
-- 删除、上下架、审核等关键动作均建议记录操作日志，便于商家端审计
+## 7.1 菜单权限标识建议
+
+| 模块 | 权限标识建议 |
+| --- | --- |
+| 待签约酒店 | `hotel:cooperate:pending:list` |
+| 合作酒店 | `hotel:cooperate:partner:list` |
+| BD归属管理 | `hotel:cooperate:bind:list` |
+| 酒店信息 | `hotel:operate:info:list` |
+| 房型管理 | `hotel:operate:roomType:list` |
+| 库存价格 | `hotel:operate:price:list` |
+| 酒店订单 | `hotel:service:order:list` |
+| 账单管理 | `hotel:finance:bill:list` |
+| 参数配置 | `hotel:config:edit` |
+
+## 7.2 字典类型建议
+
+建议补充以下字典：
+
+- 酒店申请状态
+- 合作状态
+- 佣金模式
+- 酒店上下架状态
+- 房型销售状态
+- 退款规则
+- 特殊日期标记
+- 订单状态
+- 账单状态
+- 支付状态
+- 异议状态
 
 ---
 
-## 12. 一期与二期边界说明
+## 8. SQL 产出说明
 
-### 12.1 一期落地
+本次完整 SQL 已单独输出到 [`sql/hotel.sql`](sql/hotel.sql)。
 
-- 当前商家唯一酒店信息维护
-- 房型基础档案管理
-- 房型设施绑定
-- 默认价格、默认库存维护
-- 房型上下架与可预订控制
-- 退款审核流转
+SQL 脚本应包含：
 
-### 12.2 二期预留
+- 建表语句
+- 字段注释
+- 索引语句
+- 默认值设计
+- 部分初始化字典/配置建议（如需要）
 
-- 基于 [`hotel_room_inventory`](sql/hotel.sql) 的按日房态库存与价格管理
-- 多店铺管理
-- 与订单中心联动扣减库存
-- 退款自动打款与平台复核
-- 渠道分销与价格日历同步
+---
+
+## 9. 迭代建议
+
+### 9.1 第一阶段优先落地
+
+- 合作中心
+- 酒店信息
+- 房型管理
+- 库存价格管理
+- 订单管理
+- 账单管理基础能力
+
+### 9.2 第二阶段增强
+
+- 酒店端账单确认
+- 批量通知
+- 经营统计
+- 配置变更日志
+- 更多自动化处理任务
+
+---
+
+## 10. 总结
+
+本文档将 [`plans/酒店.md`](plans/酒店.md) 的原始规划转化为面向若依前后端分离项目的技术接口设计方案，重点明确了：
+
+- 前端页面如何规划
+- 后端接口如何定义
+- 数据库表如何拆分
+- 模块代码如何组织
+
+后续开发可基于本文档继续细化 Controller、Service、Mapper、Vue 页面和权限菜单配置。

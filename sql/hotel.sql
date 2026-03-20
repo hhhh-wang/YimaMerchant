@@ -1,297 +1,789 @@
--- ----------------------------
--- 酒店商家端模块表结构 + 菜单权限字典初始化脚本
--- 适用项目：YimaMerchant 若依商家端
--- 执行说明：
--- 1. 首次初始化建议在测试库执行
--- 2. 若表已存在，可按需注释 drop 语句
--- 3. 菜单与字典脚本依赖若依基础表已存在
--- ----------------------------
+-- 酒店业务模块建表脚本
+-- 说明：适用于若依前后端分离项目酒店业务场景
+-- 字符集：utf8mb4
+-- 引擎：InnoDB
+
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
 
 -- ----------------------------
--- 1、酒店信息表
+-- 1. 待签约酒店申请表
 -- ----------------------------
-drop table if exists hotel_info;
-create table hotel_info (
-  id               bigint(20)      not null auto_increment    comment '主键',
-  merchant_id      bigint(20)      not null                   comment '商家编号',
-  hotel_name       varchar(50)     not null                   comment '酒店名称',
-  hotel_cover      varchar(255)    default null               comment '酒店封面图',
-  hotel_images     text                                       comment '酒店轮播图(JSON数组)',
-  phone            varchar(20)     not null                   comment '联系电话',
-  province_code    varchar(20)     default null               comment '省编码',
-  city_code        varchar(20)     default null               comment '市编码',
-  district_code    varchar(20)     default null               comment '区编码',
-  address          varchar(255)    not null                   comment '详细地址',
-  longitude        decimal(10,6)   default null               comment '经度',
-  latitude         decimal(10,6)   default null               comment '纬度',
-  check_in_time    varchar(10)     not null                   comment '入住时间',
-  check_out_time   varchar(10)     not null                   comment '离店时间',
-  intro            text                                       comment '酒店简介',
-  booking_notice   text                                       comment '预订须知',
-  cancel_rule      text                                       comment '取消规则',
-  invoice_desc     text                                       comment '开票说明',
-  parking_desc     text                                       comment '停车说明',
-  status           char(1)         default '1'                comment '酒店状态（0草稿 1启用 2停业）',
-  del_flag         char(1)         default '0'                comment '删除标记（0存在 2删除）',
-  create_by        varchar(64)     default ''                 comment '创建者',
-  create_time      datetime                                   comment '创建时间',
-  update_by        varchar(64)     default ''                 comment '更新者',
-  update_time      datetime                                   comment '更新时间',
-  remark           varchar(500)    default null               comment '备注',
-  primary key (id),
-  unique key uk_merchant_id (merchant_id),
-  key idx_status (status)
-) engine=innodb default charset=utf8mb4 comment = '酒店信息表';
-
--- ----------------------------
--- 2、酒店房型表
--- ----------------------------
-drop table if exists hotel_room_type;
-create table hotel_room_type (
-  id               bigint(20)      not null auto_increment    comment '主键',
-  hotel_id         bigint(20)      not null                   comment '酒店编号',
-  merchant_id      bigint(20)      not null                   comment '商家编号',
-  room_type_name   varchar(50)     not null                   comment '房型名称',
-  room_type_code   varchar(50)     not null                   comment '房型编码',
-  room_images      text                                       comment '房型图片(JSON数组)',
-  bed_type         char(1)         not null                   comment '床型',
-  people_limit     int(11)         default 1                  comment '可住人数',
-  area             varchar(30)     default null               comment '面积说明',
-  floor_desc       varchar(50)     default null               comment '楼层描述',
-  window_type      char(1)         default null               comment '窗型',
-  breakfast_count  int(11)         default 0                  comment '早餐数量',
-  extra_bed_flag   char(1)         default 'N'                comment '是否可加床（Y是 N否）',
-  description      text                                       comment '房型描述',
-  base_price       decimal(10,2)   default null               comment '默认价格',
-  market_price     decimal(10,2)   default null               comment '划线价',
-  base_stock       int(11)         default 0                  comment '默认库存',
-  sold_num         int(11)         default 0                  comment '已售数量',
-  config_status    char(1)         default '1'                comment '配置状态（0停用 1启用）',
-  sale_status      char(1)         default '0'                comment '上架状态（0下架 1上架）',
-  bookable_flag    char(1)         default 'Y'                comment '是否可预订（Y是 N否）',
-  sort_num         int(11)         default 0                  comment '排序号',
-  del_flag         char(1)         default '0'                comment '删除标记（0存在 2删除）',
-  create_by        varchar(64)     default ''                 comment '创建者',
-  create_time      datetime                                   comment '创建时间',
-  update_by        varchar(64)     default ''                 comment '更新者',
-  update_time      datetime                                   comment '更新时间',
-  remark           varchar(500)    default null               comment '备注',
-  primary key (id),
-  unique key uk_hotel_room_type_name (hotel_id, room_type_name),
-  unique key uk_hotel_room_type_code (hotel_id, room_type_code),
-  key idx_hotel_id (hotel_id),
-  key idx_merchant_id (merchant_id),
-  key idx_sale_status (sale_status),
-  key idx_config_status (config_status)
-) engine=innodb default charset=utf8mb4 comment = '酒店房型表';
+DROP TABLE IF EXISTS `hotel_pending_apply`;
+CREATE TABLE `hotel_pending_apply`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `apply_no` varchar(64) NOT NULL COMMENT '申请单号',
+  `hotel_name` varchar(128) NOT NULL COMMENT '酒店名称',
+  `contact_name` varchar(64) DEFAULT NULL COMMENT '联系人',
+  `contact_phone` varchar(32) DEFAULT NULL COMMENT '联系电话',
+  `province_code` varchar(32) DEFAULT NULL COMMENT '省编码',
+  `province_name` varchar(64) DEFAULT NULL COMMENT '省名称',
+  `city_code` varchar(32) DEFAULT NULL COMMENT '市编码',
+  `city_name` varchar(64) DEFAULT NULL COMMENT '市名称',
+  `district_code` varchar(32) DEFAULT NULL COMMENT '区编码',
+  `district_name` varchar(64) DEFAULT NULL COMMENT '区名称',
+  `address` varchar(255) DEFAULT NULL COMMENT '详细地址',
+  `longitude` decimal(12, 6) DEFAULT NULL COMMENT '经度',
+  `latitude` decimal(12, 6) DEFAULT NULL COMMENT '纬度',
+  `business_license_files` varchar(500) DEFAULT NULL COMMENT '营业执照附件ID集合',
+  `special_license_files` varchar(500) DEFAULT NULL COMMENT '特种行业许可证附件ID集合',
+  `health_license_files` varchar(500) DEFAULT NULL COMMENT '卫生许可证附件ID集合',
+  `apply_remark` varchar(500) DEFAULT NULL COMMENT '申请备注',
+  `apply_status` varchar(32) NOT NULL DEFAULT 'PENDING' COMMENT '申请状态：PENDING/APPROVED/REJECTED',
+  `applicant_id` bigint DEFAULT NULL COMMENT '申请人ID',
+  `applicant_name` varchar(64) DEFAULT NULL COMMENT '申请人姓名',
+  `apply_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '申请时间',
+  `audit_time` datetime DEFAULT NULL COMMENT '审核时间',
+  `audit_user_id` bigint DEFAULT NULL COMMENT '审核人ID',
+  `audit_user_name` varchar(64) DEFAULT NULL COMMENT '审核人姓名',
+  `reject_reason` varchar(500) DEFAULT NULL COMMENT '驳回原因',
+  `partner_hotel_id` bigint DEFAULT NULL COMMENT '转合作酒店ID',
+  `last_operate_time` datetime DEFAULT NULL COMMENT '最后操作时间',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `create_by` varchar(64) DEFAULT '' COMMENT '创建人',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新人',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标记（0存在 2删除）',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_apply_no` (`apply_no`),
+  KEY `idx_hotel_name` (`hotel_name`),
+  KEY `idx_apply_status` (`apply_status`),
+  KEY `idx_apply_time` (`apply_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='待签约酒店申请表';
 
 -- ----------------------------
--- 3、酒店设施表
+-- 2. 酒店申请审核日志表
 -- ----------------------------
-drop table if exists hotel_facility;
-create table hotel_facility (
-  id               bigint(20)      not null auto_increment    comment '主键',
-  facility_name    varchar(50)     not null                   comment '设施名称',
-  facility_type    char(1)         not null                   comment '设施分类（1房间设施 2卫浴设施 3公共设施 4服务设施）',
-  status           char(1)         default '1'                comment '状态（0停用 1启用）',
-  sort_num         int(11)         default 0                  comment '排序号',
-  remark           varchar(500)    default null               comment '备注',
-  primary key (id),
-  unique key uk_facility_name_type (facility_name, facility_type),
-  key idx_facility_type (facility_type),
-  key idx_status (status)
-) engine=innodb default charset=utf8mb4 comment = '酒店设施表';
-
--- ----------------------------
--- 4、房型设施关联表
--- ----------------------------
-drop table if exists hotel_room_type_facility_rel;
-create table hotel_room_type_facility_rel (
-  id               bigint(20)      not null auto_increment    comment '主键',
-  hotel_id         bigint(20)      not null                   comment '酒店编号',
-  room_type_id     bigint(20)      not null                   comment '房型编号',
-  facility_id      bigint(20)      not null                   comment '设施编号',
-  primary key (id),
-  unique key uk_room_type_facility (room_type_id, facility_id),
-  key idx_hotel_id (hotel_id),
-  key idx_facility_id (facility_id)
-) engine=innodb default charset=utf8mb4 comment = '房型设施关联表';
+DROP TABLE IF EXISTS `hotel_pending_audit_log`;
+CREATE TABLE `hotel_pending_audit_log`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `apply_id` bigint NOT NULL COMMENT '申请ID',
+  `operate_type` varchar(32) NOT NULL COMMENT '操作类型：SUBMIT/APPROVE/REJECT/UPDATE/DELETE',
+  `operate_user_id` bigint DEFAULT NULL COMMENT '操作人ID',
+  `operate_user_name` varchar(64) DEFAULT NULL COMMENT '操作人姓名',
+  `operate_remark` varchar(500) DEFAULT NULL COMMENT '操作备注',
+  `operate_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
+  `create_by` varchar(64) DEFAULT '' COMMENT '创建人',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新人',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标记',
+  PRIMARY KEY (`id`),
+  KEY `idx_apply_id` (`apply_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='酒店申请审核日志表';
 
 -- ----------------------------
--- 5、酒店退款单表
+-- 3. 合作酒店主表
 -- ----------------------------
-drop table if exists hotel_refund_order;
-create table hotel_refund_order (
-  id                   bigint(20)      not null auto_increment    comment '主键',
-  refund_no            varchar(50)     not null                   comment '退款单号',
-  order_id             bigint(20)      not null                   comment '订单编号',
-  order_no             varchar(50)     not null                   comment '订单号',
-  hotel_id             bigint(20)      not null                   comment '酒店编号',
-  merchant_id          bigint(20)      not null                   comment '商家编号',
-  room_type_id         bigint(20)      not null                   comment '房型编号',
-  guest_name           varchar(50)     default null               comment '入住人',
-  guest_phone          varchar(20)     default null               comment '联系电话',
-  check_in_date        date                                       comment '入住日期',
-  check_out_date       date                                       comment '离店日期',
-  order_amount         decimal(10,2)   default null               comment '订单金额',
-  apply_refund_amount  decimal(10,2)   not null                   comment '申请退款金额',
-  refund_reason        varchar(500)    default null               comment '退款原因',
-  refund_status        char(1)         not null default '1'       comment '退款状态（1待商家处理 2商家已同意 3商家已拒绝）',
-  audit_remark         varchar(500)    default null               comment '审核备注',
-  audit_by             varchar(64)     default null               comment '审核人',
-  audit_time           datetime                                   comment '审核时间',
-  create_time          datetime                                   comment '创建时间',
-  update_time          datetime                                   comment '更新时间',
-  primary key (id),
-  unique key uk_refund_no (refund_no),
-  key idx_order_id (order_id),
-  key idx_hotel_id (hotel_id),
-  key idx_merchant_id (merchant_id),
-  key idx_refund_status (refund_status),
-  key idx_check_in_date (check_in_date)
-) engine=innodb default charset=utf8mb4 comment = '酒店退款单表';
-
--- ----------------------------
--- 6、酒店房态库存价格表（预留）
--- ----------------------------
-drop table if exists hotel_room_inventory;
-create table hotel_room_inventory (
-  id               bigint(20)      not null auto_increment    comment '主键',
-  hotel_id         bigint(20)      not null                   comment '酒店编号',
-  merchant_id      bigint(20)      not null                   comment '商家编号',
-  room_type_id     bigint(20)      not null                   comment '房型编号',
-  biz_date         date            not null                   comment '业务日期',
-  stock_num        int(11)         default 0                  comment '库存数量',
-  sold_num         int(11)         default 0                  comment '已售数量',
-  available_num    int(11)         default 0                  comment '剩余可售',
-  sale_price       decimal(10,2)   default null               comment '销售价',
-  market_price     decimal(10,2)   default null               comment '划线价',
-  sale_status      char(1)         default '1'                comment '可售状态（0不可售 1可售）',
-  create_time      datetime                                   comment '创建时间',
-  update_time      datetime                                   comment '更新时间',
-  primary key (id),
-  unique key uk_room_type_biz_date (room_type_id, biz_date),
-  key idx_hotel_id (hotel_id),
-  key idx_merchant_id (merchant_id),
-  key idx_biz_date (biz_date)
-) engine=innodb default charset=utf8mb4 comment = '房态库存价格表';
+DROP TABLE IF EXISTS `hotel_partner`;
+CREATE TABLE `hotel_partner`  (
+  `hotel_id` bigint NOT NULL AUTO_INCREMENT COMMENT '酒店ID',
+  `hotel_code` varchar(64) NOT NULL COMMENT '酒店编码',
+  `hotel_name` varchar(128) NOT NULL COMMENT '酒店名称',
+  `hotel_name_en` varchar(128) DEFAULT NULL COMMENT '酒店英文名',
+  `brand_name` varchar(64) DEFAULT NULL COMMENT '品牌',
+  `star_level` varchar(32) DEFAULT NULL COMMENT '星级',
+  `contact_name` varchar(64) DEFAULT NULL COMMENT '联系人',
+  `contact_phone` varchar(32) DEFAULT NULL COMMENT '联系电话',
+  `contact_email` varchar(128) DEFAULT NULL COMMENT '邮箱',
+  `province_code` varchar(32) DEFAULT NULL COMMENT '省编码',
+  `province_name` varchar(64) DEFAULT NULL COMMENT '省名称',
+  `city_code` varchar(32) DEFAULT NULL COMMENT '市编码',
+  `city_name` varchar(64) DEFAULT NULL COMMENT '市名称',
+  `district_code` varchar(32) DEFAULT NULL COMMENT '区编码',
+  `district_name` varchar(64) DEFAULT NULL COMMENT '区名称',
+  `address` varchar(255) DEFAULT NULL COMMENT '详细地址',
+  `longitude` decimal(12, 6) DEFAULT NULL COMMENT '经度',
+  `latitude` decimal(12, 6) DEFAULT NULL COMMENT '纬度',
+  `cooperate_status` varchar(32) NOT NULL DEFAULT 'NORMAL' COMMENT '合作状态：NORMAL/PAUSED/TERMINATED',
+  `source_apply_id` bigint DEFAULT NULL COMMENT '来源申请ID',
+  `sign_date` datetime DEFAULT NULL COMMENT '签约时间',
+  `contract_start_date` date DEFAULT NULL COMMENT '合同开始日期',
+  `contract_end_date` date DEFAULT NULL COMMENT '合同结束日期',
+  `commission_mode` varchar(32) NOT NULL DEFAULT 'BASE_PRICE' COMMENT '佣金模式：BASE_PRICE/SELL_PRICE',
+  `commission_rate` decimal(8, 4) DEFAULT NULL COMMENT '佣金比例',
+  `markup_rate` decimal(8, 4) DEFAULT NULL COMMENT '加价率',
+  `bd_user_id` bigint DEFAULT NULL COMMENT '当前归属BD',
+  `bd_user_name` varchar(64) DEFAULT NULL COMMENT '当前归属BD姓名',
+  `account_status` varchar(32) NOT NULL DEFAULT 'ENABLED' COMMENT '酒店账号状态：ENABLED/DISABLED',
+  `status_reason` varchar(500) DEFAULT NULL COMMENT '状态变更原因',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `create_by` varchar(64) DEFAULT '' COMMENT '创建人',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新人',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标记',
+  PRIMARY KEY (`hotel_id`),
+  UNIQUE KEY `uk_hotel_code` (`hotel_code`),
+  KEY `idx_hotel_name` (`hotel_name`),
+  KEY `idx_cooperate_status` (`cooperate_status`),
+  KEY `idx_bd_user_id` (`bd_user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='合作酒店主表';
 
 -- ----------------------------
--- 7、初始化设施数据
+-- 4. 酒店合同表
 -- ----------------------------
-delete from hotel_facility;
-insert into hotel_facility (id, facility_name, facility_type, status, sort_num, remark) values (1, 'WiFi', '1', '1', 1, '基础设施');
-insert into hotel_facility (id, facility_name, facility_type, status, sort_num, remark) values (2, '空调', '1', '1', 2, '基础设施');
-insert into hotel_facility (id, facility_name, facility_type, status, sort_num, remark) values (3, '独立卫浴', '2', '1', 3, '卫浴设施');
-insert into hotel_facility (id, facility_name, facility_type, status, sort_num, remark) values (4, '热水', '2', '1', 4, '卫浴设施');
-insert into hotel_facility (id, facility_name, facility_type, status, sort_num, remark) values (5, '电视', '1', '1', 5, '房间设施');
-insert into hotel_facility (id, facility_name, facility_type, status, sort_num, remark) values (6, '吹风机', '2', '1', 6, '房间设施');
-insert into hotel_facility (id, facility_name, facility_type, status, sort_num, remark) values (7, '洗漱用品', '2', '1', 7, '房间设施');
-insert into hotel_facility (id, facility_name, facility_type, status, sort_num, remark) values (8, '免费停车', '3', '1', 8, '公共设施');
-insert into hotel_facility (id, facility_name, facility_type, status, sort_num, remark) values (9, '电梯', '3', '1', 9, '公共设施');
-insert into hotel_facility (id, facility_name, facility_type, status, sort_num, remark) values (10, '早餐', '4', '1', 10, '服务设施');
-
--- ----------------------------
--- 8、初始化酒店业务字典类型
--- ----------------------------
-delete from sys_dict_data where dict_type in (
-  'hotel_status',
-  'hotel_room_bed_type',
-  'hotel_room_window_type',
-  'hotel_facility_type',
-  'hotel_room_config_status',
-  'hotel_room_sale_status',
-  'hotel_bookable_flag',
-  'hotel_refund_status'
-);
-
-delete from sys_dict_type where dict_type in (
-  'hotel_status',
-  'hotel_room_bed_type',
-  'hotel_room_window_type',
-  'hotel_facility_type',
-  'hotel_room_config_status',
-  'hotel_room_sale_status',
-  'hotel_bookable_flag',
-  'hotel_refund_status'
-);
-
-insert into sys_dict_type values(200, '酒店状态', 'hotel_status', '0', 'admin', sysdate(), '', null, '酒店状态字典');
-insert into sys_dict_type values(201, '房型床型', 'hotel_room_bed_type', '0', 'admin', sysdate(), '', null, '房型床型字典');
-insert into sys_dict_type values(202, '房型窗型', 'hotel_room_window_type', '0', 'admin', sysdate(), '', null, '房型窗型字典');
-insert into sys_dict_type values(203, '设施分类', 'hotel_facility_type', '0', 'admin', sysdate(), '', null, '设施分类字典');
-insert into sys_dict_type values(204, '房型配置状态', 'hotel_room_config_status', '0', 'admin', sysdate(), '', null, '房型配置状态字典');
-insert into sys_dict_type values(205, '房型上架状态', 'hotel_room_sale_status', '0', 'admin', sysdate(), '', null, '房型上架状态字典');
-insert into sys_dict_type values(206, '是否可预订', 'hotel_bookable_flag', '0', 'admin', sysdate(), '', null, '是否可预订字典');
-insert into sys_dict_type values(207, '酒店退款状态', 'hotel_refund_status', '0', 'admin', sysdate(), '', null, '酒店退款状态字典');
-
-insert into sys_dict_data values(2000, 1,  '草稿',     '0', 'hotel_status',              '', 'default', 'Y', '0', 'admin', sysdate(), '', null, '酒店状态');
-insert into sys_dict_data values(2001, 2,  '启用',     '1', 'hotel_status',              '', 'primary', 'N', '0', 'admin', sysdate(), '', null, '酒店状态');
-insert into sys_dict_data values(2002, 3,  '停业',     '2', 'hotel_status',              '', 'danger',  'N', '0', 'admin', sysdate(), '', null, '酒店状态');
-
-insert into sys_dict_data values(2010, 1,  '大床',     '1', 'hotel_room_bed_type',       '', 'default', 'N', '0', 'admin', sysdate(), '', null, '床型');
-insert into sys_dict_data values(2011, 2,  '双床',     '2', 'hotel_room_bed_type',       '', 'success', 'N', '0', 'admin', sysdate(), '', null, '床型');
-insert into sys_dict_data values(2012, 3,  '圆床',     '3', 'hotel_room_bed_type',       '', 'warning', 'N', '0', 'admin', sysdate(), '', null, '床型');
-insert into sys_dict_data values(2013, 4,  '榻榻米',   '4', 'hotel_room_bed_type',       '', 'info',    'N', '0', 'admin', sysdate(), '', null, '床型');
-
-insert into sys_dict_data values(2020, 1,  '有窗',     '1', 'hotel_room_window_type',    '', 'success', 'N', '0', 'admin', sysdate(), '', null, '窗型');
-insert into sys_dict_data values(2021, 2,  '无窗',     '2', 'hotel_room_window_type',    '', 'danger',  'N', '0', 'admin', sysdate(), '', null, '窗型');
-insert into sys_dict_data values(2022, 3,  '部分有窗', '3', 'hotel_room_window_type',    '', 'warning', 'N', '0', 'admin', sysdate(), '', null, '窗型');
-
-insert into sys_dict_data values(2030, 1,  '房间设施', '1', 'hotel_facility_type',       '', 'primary', 'N', '0', 'admin', sysdate(), '', null, '设施分类');
-insert into sys_dict_data values(2031, 2,  '卫浴设施', '2', 'hotel_facility_type',       '', 'success', 'N', '0', 'admin', sysdate(), '', null, '设施分类');
-insert into sys_dict_data values(2032, 3,  '公共设施', '3', 'hotel_facility_type',       '', 'warning', 'N', '0', 'admin', sysdate(), '', null, '设施分类');
-insert into sys_dict_data values(2033, 4,  '服务设施', '4', 'hotel_facility_type',       '', 'info',    'N', '0', 'admin', sysdate(), '', null, '设施分类');
-
-insert into sys_dict_data values(2040, 1,  '停用',     '0', 'hotel_room_config_status',  '', 'danger',  'N', '0', 'admin', sysdate(), '', null, '房型配置状态');
-insert into sys_dict_data values(2041, 2,  '启用',     '1', 'hotel_room_config_status',  '', 'success', 'N', '0', 'admin', sysdate(), '', null, '房型配置状态');
-
-insert into sys_dict_data values(2050, 1,  '下架',     '0', 'hotel_room_sale_status',    '', 'info',    'N', '0', 'admin', sysdate(), '', null, '房型上架状态');
-insert into sys_dict_data values(2051, 2,  '上架',     '1', 'hotel_room_sale_status',    '', 'success', 'N', '0', 'admin', sysdate(), '', null, '房型上架状态');
-
-insert into sys_dict_data values(2060, 1,  '否',       'N', 'hotel_bookable_flag',       '', 'danger',  'N', '0', 'admin', sysdate(), '', null, '是否可预订');
-insert into sys_dict_data values(2061, 2,  '是',       'Y', 'hotel_bookable_flag',       '', 'success', 'N', '0', 'admin', sysdate(), '', null, '是否可预订');
-
-insert into sys_dict_data values(2070, 1,  '待商家处理', '1', 'hotel_refund_status',     '', 'warning', 'N', '0', 'admin', sysdate(), '', null, '退款状态');
-insert into sys_dict_data values(2071, 2,  '商家已同意', '2', 'hotel_refund_status',     '', 'success', 'N', '0', 'admin', sysdate(), '', null, '退款状态');
-insert into sys_dict_data values(2072, 3,  '商家已拒绝', '3', 'hotel_refund_status',     '', 'danger',  'N', '0', 'admin', sysdate(), '', null, '退款状态');
+DROP TABLE IF EXISTS `hotel_contract`;
+CREATE TABLE `hotel_contract`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `hotel_id` bigint NOT NULL COMMENT '酒店ID',
+  `contract_no` varchar(64) NOT NULL COMMENT '合同编号',
+  `contract_name` varchar(128) DEFAULT NULL COMMENT '合同名称',
+  `contract_file_ids` varchar(500) DEFAULT NULL COMMENT '合同附件',
+  `contract_start_date` date DEFAULT NULL COMMENT '合同开始日期',
+  `contract_end_date` date DEFAULT NULL COMMENT '合同结束日期',
+  `commission_mode` varchar(32) NOT NULL COMMENT '佣金模式',
+  `commission_rate` decimal(8, 4) DEFAULT NULL COMMENT '佣金比例',
+  `markup_rate` decimal(8, 4) DEFAULT NULL COMMENT '加价率',
+  `contract_status` varchar(32) NOT NULL DEFAULT 'EFFECTIVE' COMMENT '合同状态：EFFECTIVE/EXPIRED/TERMINATED',
+  `sign_user_id` bigint DEFAULT NULL COMMENT '签约操作人ID',
+  `sign_user_name` varchar(64) DEFAULT NULL COMMENT '签约操作人姓名',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `create_by` varchar(64) DEFAULT '' COMMENT '创建人',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新人',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标记',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_contract_no` (`contract_no`),
+  KEY `idx_hotel_id` (`hotel_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='酒店合同表';
 
 -- ----------------------------
--- 9、初始化菜单与权限
--- 说明：parent_id=0 时会挂到顶级目录下，可按现网菜单结构自行调整
+-- 5. 酒店账号表
 -- ----------------------------
-delete from sys_menu where perms like 'hotel:%';
-delete from sys_menu where path in ('hotel', 'hotelInfo', 'hotelRoomType', 'hotelInventory', 'hotelRefund');
+DROP TABLE IF EXISTS `hotel_account`;
+CREATE TABLE `hotel_account`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `hotel_id` bigint NOT NULL COMMENT '酒店ID',
+  `sys_user_id` bigint DEFAULT NULL COMMENT '关联系统用户ID',
+  `account_type` varchar(32) NOT NULL DEFAULT 'MAIN' COMMENT '账号类型：MAIN/SUB',
+  `account_name` varchar(64) NOT NULL COMMENT '账号名称',
+  `nick_name` varchar(64) DEFAULT NULL COMMENT '昵称',
+  `mobile` varchar(32) DEFAULT NULL COMMENT '手机号',
+  `email` varchar(128) DEFAULT NULL COMMENT '邮箱',
+  `role_names` varchar(255) DEFAULT NULL COMMENT '角色名集合',
+  `account_status` varchar(32) NOT NULL DEFAULT 'ENABLED' COMMENT '账号状态',
+  `last_login_time` datetime DEFAULT NULL COMMENT '最后登录时间',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `create_by` varchar(64) DEFAULT '' COMMENT '创建人',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新人',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标记',
+  PRIMARY KEY (`id`),
+  KEY `idx_hotel_id` (`hotel_id`),
+  KEY `idx_sys_user_id` (`sys_user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='酒店账号表';
 
-insert into sys_menu values('2000', '酒店管理', '0', '5', 'hotel', null, '', '', 1, 0, 'M', '0', '0', '', 'guide', 'admin', sysdate(), '', null, '酒店管理目录');
-insert into sys_menu values('2001', '酒店信息', '2000', '1', 'hotelInfo', 'hotel/info/index', '', '', 1, 0, 'C', '0', '0', 'hotel:info:list', 'build', 'admin', sysdate(), '', null, '酒店信息菜单');
-insert into sys_menu values('2002', '房型管理', '2000', '2', 'hotelRoomType', 'hotel/roomType/index', '', '', 1, 0, 'C', '0', '0', 'hotel:roomType:list', 'tree', 'admin', sysdate(), '', null, '房型管理菜单');
-insert into sys_menu values('2003', '库存价格管理', '2000', '3', 'hotelInventory', 'hotel/inventory/index', '', '', 1, 0, 'C', '0', '0', 'hotel:inventory:list', 'shopping', 'admin', sysdate(), '', null, '库存价格管理菜单');
-insert into sys_menu values('2004', '酒店退款', '2000', '4', 'hotelRefund', 'hotel/refund/index', '', '', 1, 0, 'C', '0', '0', 'hotel:refund:list', 'money', 'admin', sysdate(), '', null, '酒店退款菜单');
+-- ----------------------------
+-- 6. BD酒店绑定表
+-- ----------------------------
+DROP TABLE IF EXISTS `hotel_bd_bind`;
+CREATE TABLE `hotel_bd_bind`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `hotel_id` bigint NOT NULL COMMENT '酒店ID',
+  `bd_user_id` bigint NOT NULL COMMENT 'BD用户ID',
+  `bd_user_name` varchar(64) DEFAULT NULL COMMENT 'BD姓名',
+  `bind_status` varchar(32) NOT NULL DEFAULT 'BOUND' COMMENT '绑定状态：BOUND/UNBOUND',
+  `bind_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '绑定时间',
+  `unbind_time` datetime DEFAULT NULL COMMENT '解绑时间',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `create_by` varchar(64) DEFAULT '' COMMENT '创建人',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新人',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标记',
+  PRIMARY KEY (`id`),
+  KEY `idx_hotel_id` (`hotel_id`),
+  KEY `idx_bd_user_id` (`bd_user_id`),
+  KEY `idx_bind_status` (`bind_status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='BD酒店绑定表';
 
-insert into sys_menu values('2101', '酒店信息查询', '2001', '1', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:info:query', '#', 'admin', sysdate(), '', null, '');
-insert into sys_menu values('2102', '酒店信息新增', '2001', '2', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:info:add', '#', 'admin', sysdate(), '', null, '');
-insert into sys_menu values('2103', '酒店信息修改', '2001', '3', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:info:edit', '#', 'admin', sysdate(), '', null, '');
+-- ----------------------------
+-- 7. BD酒店绑定历史表
+-- ----------------------------
+DROP TABLE IF EXISTS `hotel_bd_bind_history`;
+CREATE TABLE `hotel_bd_bind_history`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `hotel_id` bigint NOT NULL COMMENT '酒店ID',
+  `old_bd_user_id` bigint DEFAULT NULL COMMENT '原BD用户ID',
+  `old_bd_user_name` varchar(64) DEFAULT NULL COMMENT '原BD姓名',
+  `new_bd_user_id` bigint DEFAULT NULL COMMENT '新BD用户ID',
+  `new_bd_user_name` varchar(64) DEFAULT NULL COMMENT '新BD姓名',
+  `operate_type` varchar(32) NOT NULL COMMENT '操作类型：BIND/UNBIND/TRANSFER',
+  `operate_reason` varchar(500) DEFAULT NULL COMMENT '操作原因',
+  `operate_user_id` bigint DEFAULT NULL COMMENT '操作人ID',
+  `operate_user_name` varchar(64) DEFAULT NULL COMMENT '操作人姓名',
+  `operate_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
+  `create_by` varchar(64) DEFAULT '' COMMENT '创建人',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新人',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标记',
+  PRIMARY KEY (`id`),
+  KEY `idx_hotel_id` (`hotel_id`),
+  KEY `idx_old_bd_user_id` (`old_bd_user_id`),
+  KEY `idx_new_bd_user_id` (`new_bd_user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='BD酒店绑定历史表';
 
-insert into sys_menu values('2201', '房型查询', '2002', '1', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:roomType:query', '#', 'admin', sysdate(), '', null, '');
-insert into sys_menu values('2202', '房型新增', '2002', '2', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:roomType:add', '#', 'admin', sysdate(), '', null, '');
-insert into sys_menu values('2203', '房型修改', '2002', '3', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:roomType:edit', '#', 'admin', sysdate(), '', null, '');
-insert into sys_menu values('2204', '房型删除', '2002', '4', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:roomType:remove', '#', 'admin', sysdate(), '', null, '');
-insert into sys_menu values('2205', '房型上下架', '2002', '5', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:roomType:changeStatus', '#', 'admin', sysdate(), '', null, '');
+-- ----------------------------
+-- 8. 酒店资料表
+-- ----------------------------
+DROP TABLE IF EXISTS `hotel_profile`;
+CREATE TABLE `hotel_profile`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `hotel_id` bigint NOT NULL COMMENT '酒店ID',
+  `hotel_logo` varchar(255) DEFAULT NULL COMMENT '酒店LOGO',
+  `cover_image` varchar(255) DEFAULT NULL COMMENT '封面图',
+  `hotel_desc` text COMMENT '酒店描述',
+  `service_tags` varchar(500) DEFAULT NULL COMMENT '设施服务标签',
+  `traffic_info` varchar(500) DEFAULT NULL COMMENT '交通指引',
+  `customer_service_time` varchar(64) DEFAULT NULL COMMENT '客服时间',
+  `checkin_time` varchar(16) DEFAULT NULL COMMENT '入住时间',
+  `checkout_time` varchar(16) DEFAULT NULL COMMENT '离店时间',
+  `child_policy` varchar(500) DEFAULT NULL COMMENT '儿童政策',
+  `pet_policy` varchar(500) DEFAULT NULL COMMENT '宠物政策',
+  `cancel_policy` varchar(500) DEFAULT NULL COMMENT '取消政策',
+  `sale_status` varchar(32) NOT NULL DEFAULT 'OFF_SHELF' COMMENT '上下架状态：ON_SHELF/OFF_SHELF',
+  `sync_source` varchar(32) DEFAULT NULL COMMENT '同步来源',
+  `sync_time` datetime DEFAULT NULL COMMENT '最近同步时间',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `create_by` varchar(64) DEFAULT '' COMMENT '创建人',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新人',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标记',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_hotel_id` (`hotel_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='酒店资料表';
 
-insert into sys_menu values('2301', '库存价格查询', '2003', '1', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:inventory:query', '#', 'admin', sysdate(), '', null, '');
-insert into sys_menu values('2302', '库存价格修改', '2003', '2', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:inventory:edit', '#', 'admin', sysdate(), '', null, '');
-insert into sys_menu values('2303', '库存价格批量修改', '2003', '3', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:inventory:batchEdit', '#', 'admin', sysdate(), '', null, '');
-insert into sys_menu values('2304', '库存价格上下架', '2003', '4', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:inventory:changeStatus', '#', 'admin', sysdate(), '', null, '');
+-- ----------------------------
+-- 9. 酒店图片表
+-- ----------------------------
+DROP TABLE IF EXISTS `hotel_profile_image`;
+CREATE TABLE `hotel_profile_image`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `hotel_id` bigint NOT NULL COMMENT '酒店ID',
+  `image_type` varchar(32) NOT NULL COMMENT '图片类型：COVER/APPEARANCE/ROOM/FACILITY/OTHER',
+  `image_url` varchar(255) NOT NULL COMMENT '图片地址',
+  `image_name` varchar(128) DEFAULT NULL COMMENT '图片名称',
+  `sort_num` int NOT NULL DEFAULT 0 COMMENT '排序号',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `create_by` varchar(64) DEFAULT '' COMMENT '创建人',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新人',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标记',
+  PRIMARY KEY (`id`),
+  KEY `idx_hotel_id` (`hotel_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='酒店图片表';
 
-insert into sys_menu values('2401', '退款查询', '2004', '1', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:refund:query', '#', 'admin', sysdate(), '', null, '');
-insert into sys_menu values('2402', '退款审核', '2004', '2', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:refund:audit', '#', 'admin', sysdate(), '', null, '');
-insert into sys_menu values('2403', '退款详情', '2004', '3', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:refund:detail', '#', 'admin', sysdate(), '', null, '');
+-- ----------------------------
+-- 10. 房型表
+-- ----------------------------
+DROP TABLE IF EXISTS `hotel_room_type`;
+CREATE TABLE `hotel_room_type`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `hotel_id` bigint NOT NULL COMMENT '酒店ID',
+  `room_type_code` varchar(64) NOT NULL COMMENT '房型编码',
+  `room_type_name` varchar(128) NOT NULL COMMENT '房型名称',
+  `room_type_name_en` varchar(128) DEFAULT NULL COMMENT '房型英文名',
+  `adult_count` int NOT NULL DEFAULT 1 COMMENT '可住成人数',
+  `child_count` int NOT NULL DEFAULT 0 COMMENT '可住儿童数',
+  `bed_type` varchar(64) DEFAULT NULL COMMENT '床型',
+  `bed_desc` varchar(255) DEFAULT NULL COMMENT '床型描述',
+  `area_size` decimal(8, 2) DEFAULT NULL COMMENT '面积(㎡)',
+  `window_status` varchar(32) DEFAULT NULL COMMENT '窗户情况',
+  `bathroom_type` varchar(32) DEFAULT NULL COMMENT '卫浴类型',
+  `is_smoking` char(1) NOT NULL DEFAULT '0' COMMENT '是否可吸烟（0否 1是）',
+  `is_breakfast` char(1) NOT NULL DEFAULT '0' COMMENT '是否含早（0否 1是）',
+  `cover_image` varchar(255) DEFAULT NULL COMMENT '封面图',
+  `room_desc` text COMMENT '房型描述',
+  `default_refund_rule` varchar(32) DEFAULT NULL COMMENT '默认退款规则',
+  `min_booking_rooms` int DEFAULT NULL COMMENT '最少预订间数',
+  `max_booking_rooms` int DEFAULT NULL COMMENT '最多预订间数',
+  `min_booking_nights` int DEFAULT NULL COMMENT '最少预订晚数',
+  `max_booking_nights` int DEFAULT NULL COMMENT '最多预订晚数',
+  `sale_status` varchar(32) NOT NULL DEFAULT 'ON_SALE' COMMENT '销售状态：ON_SALE/OFF_SALE',
+  `sort_num` int NOT NULL DEFAULT 0 COMMENT '排序号',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `create_by` varchar(64) DEFAULT '' COMMENT '创建人',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新人',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标记',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_room_type_code` (`room_type_code`),
+  KEY `idx_hotel_id` (`hotel_id`),
+  KEY `idx_sale_status` (`sale_status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='房型表';
 
+-- ----------------------------
+-- 11. 房型图片表
+-- ----------------------------
+DROP TABLE IF EXISTS `hotel_room_type_image`;
+CREATE TABLE `hotel_room_type_image`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `room_type_id` bigint NOT NULL COMMENT '房型ID',
+  `image_url` varchar(255) NOT NULL COMMENT '图片地址',
+  `image_name` varchar(128) DEFAULT NULL COMMENT '图片名称',
+  `sort_num` int NOT NULL DEFAULT 0 COMMENT '排序号',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `create_by` varchar(64) DEFAULT '' COMMENT '创建人',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新人',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标记',
+  PRIMARY KEY (`id`),
+  KEY `idx_room_type_id` (`room_type_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='房型图片表';
 
+-- ----------------------------
+-- 12. 房价库存日历表
+-- ----------------------------
+DROP TABLE IF EXISTS `hotel_room_calendar`;
+CREATE TABLE `hotel_room_calendar`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `hotel_id` bigint NOT NULL COMMENT '酒店ID',
+  `room_type_id` bigint NOT NULL COMMENT '房型ID',
+  `biz_date` date NOT NULL COMMENT '业务日期',
+  `week_no` tinyint DEFAULT NULL COMMENT '星期',
+  `settlement_price` decimal(12, 2) DEFAULT NULL COMMENT '结算底价',
+  `sale_price` decimal(12, 2) DEFAULT NULL COMMENT '平台卖价/酒店卖价',
+  `commission_rate` decimal(8, 4) DEFAULT NULL COMMENT '佣金比例',
+  `commission_amount` decimal(12, 2) DEFAULT NULL COMMENT '佣金金额',
+  `inventory` int NOT NULL DEFAULT 0 COMMENT '库存',
+  `room_status` varchar(32) NOT NULL DEFAULT 'OPEN' COMMENT '房态：OPEN/CLOSED/TIGHT',
+  `refund_rule` varchar(32) DEFAULT NULL COMMENT '退款规则',
+  `special_tag` varchar(32) DEFAULT NULL COMMENT '特殊日期标记',
+  `is_default_data` char(1) NOT NULL DEFAULT '0' COMMENT '是否默认数据（0否 1是）',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `create_by` varchar(64) DEFAULT '' COMMENT '创建人',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新人',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标记',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_room_date` (`room_type_id`, `biz_date`),
+  KEY `idx_hotel_id` (`hotel_id`),
+  KEY `idx_biz_date` (`biz_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='房价库存日历表';
 
+-- ----------------------------
+-- 13. 房价库存修改日志表
+-- ----------------------------
+DROP TABLE IF EXISTS `hotel_room_calendar_log`;
+CREATE TABLE `hotel_room_calendar_log`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `calendar_id` bigint DEFAULT NULL COMMENT '日历ID',
+  `hotel_id` bigint NOT NULL COMMENT '酒店ID',
+  `room_type_id` bigint NOT NULL COMMENT '房型ID',
+  `biz_date` date NOT NULL COMMENT '业务日期',
+  `operate_type` varchar(32) NOT NULL COMMENT '操作类型：DAILY/BATCH/CLOSE/COPY/RESTORE',
+  `before_json` text COMMENT '变更前JSON',
+  `after_json` text COMMENT '变更后JSON',
+  `operate_user_id` bigint DEFAULT NULL COMMENT '操作人ID',
+  `operate_user_name` varchar(64) DEFAULT NULL COMMENT '操作人姓名',
+  `operate_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `create_by` varchar(64) DEFAULT '' COMMENT '创建人',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新人',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标记',
+  PRIMARY KEY (`id`),
+  KEY `idx_room_type_id` (`room_type_id`),
+  KEY `idx_biz_date` (`biz_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='房价库存修改日志表';
 
+-- ----------------------------
+-- 14. 酒店订单主表
+-- ----------------------------
+DROP TABLE IF EXISTS `hotel_order`;
+CREATE TABLE `hotel_order`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `order_no` varchar(64) NOT NULL COMMENT '订单号',
+  `hotel_id` bigint NOT NULL COMMENT '酒店ID',
+  `hotel_name` varchar(128) NOT NULL COMMENT '酒店名称',
+  `room_type_id` bigint NOT NULL COMMENT '房型ID',
+  `room_type_name` varchar(128) DEFAULT NULL COMMENT '房型名称',
+  `user_id` bigint DEFAULT NULL COMMENT '用户ID',
+  `user_name` varchar(64) DEFAULT NULL COMMENT '用户名',
+  `user_mobile` varchar(32) DEFAULT NULL COMMENT '用户手机号',
+  `bd_user_id` bigint DEFAULT NULL COMMENT '所属BD',
+  `checkin_date` date NOT NULL COMMENT '入住日期',
+  `checkout_date` date NOT NULL COMMENT '离店日期',
+  `night_count` int NOT NULL DEFAULT 1 COMMENT '入住晚数',
+  `room_count` int NOT NULL DEFAULT 1 COMMENT '预订间数',
+  `order_amount` decimal(12, 2) NOT NULL DEFAULT 0.00 COMMENT '订单金额',
+  `tax_amount` decimal(12, 2) NOT NULL DEFAULT 0.00 COMMENT '税费',
+  `discount_amount` decimal(12, 2) NOT NULL DEFAULT 0.00 COMMENT '优惠金额',
+  `pay_amount` decimal(12, 2) NOT NULL DEFAULT 0.00 COMMENT '实付金额',
+  `refund_amount` decimal(12, 2) NOT NULL DEFAULT 0.00 COMMENT '已退款金额',
+  `order_status` varchar(32) NOT NULL DEFAULT 'PENDING_CONFIRM' COMMENT '订单状态',
+  `refund_status` varchar(32) DEFAULT NULL COMMENT '退款状态',
+  `refund_reason` varchar(500) DEFAULT NULL COMMENT '退款原因',
+  `special_request` varchar(500) DEFAULT NULL COMMENT '特殊要求',
+  `inner_remark` varchar(500) DEFAULT NULL COMMENT '内部备注',
+  `confirm_time` datetime DEFAULT NULL COMMENT '确认时间',
+  `checkin_time` datetime DEFAULT NULL COMMENT '入住时间',
+  `checkout_time` datetime DEFAULT NULL COMMENT '离店时间',
+  `cancel_time` datetime DEFAULT NULL COMMENT '取消时间',
+  `cancel_reason` varchar(500) DEFAULT NULL COMMENT '取消原因',
+  `create_by` varchar(64) DEFAULT '' COMMENT '创建人',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新人',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标记',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_order_no` (`order_no`),
+  KEY `idx_hotel_id` (`hotel_id`),
+  KEY `idx_room_type_id` (`room_type_id`),
+  KEY `idx_order_status` (`order_status`),
+  KEY `idx_checkin_date` (`checkin_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='酒店订单主表';
 
+-- ----------------------------
+-- 15. 酒店订单入住人表
+-- ----------------------------
+DROP TABLE IF EXISTS `hotel_order_guest`;
+CREATE TABLE `hotel_order_guest`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `order_id` bigint NOT NULL COMMENT '订单ID',
+  `order_no` varchar(64) NOT NULL COMMENT '订单号',
+  `guest_name` varchar(64) NOT NULL COMMENT '入住人姓名',
+  `guest_mobile` varchar(32) DEFAULT NULL COMMENT '入住人手机号',
+  `certificate_type` varchar(32) DEFAULT NULL COMMENT '证件类型',
+  `certificate_no` varchar(64) DEFAULT NULL COMMENT '证件号',
+  `is_main_guest` char(1) NOT NULL DEFAULT '0' COMMENT '是否主入住人（0否 1是）',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `create_by` varchar(64) DEFAULT '' COMMENT '创建人',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新人',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标记',
+  PRIMARY KEY (`id`),
+  KEY `idx_order_id` (`order_id`),
+  KEY `idx_order_no` (`order_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='酒店订单入住人表';
 
+-- ----------------------------
+-- 16. 酒店订单日志表
+-- ----------------------------
+DROP TABLE IF EXISTS `hotel_order_log`;
+CREATE TABLE `hotel_order_log`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `order_id` bigint NOT NULL COMMENT '订单ID',
+  `order_no` varchar(64) NOT NULL COMMENT '订单号',
+  `operate_type` varchar(32) NOT NULL COMMENT '操作类型：CREATE/CONFIRM/CANCEL/CHECKIN/CHECKOUT/REFUND/REMARK/DISPUTE',
+  `before_status` varchar(32) DEFAULT NULL COMMENT '变更前状态',
+  `after_status` varchar(32) DEFAULT NULL COMMENT '变更后状态',
+  `operate_user_id` bigint DEFAULT NULL COMMENT '操作人ID',
+  `operate_user_name` varchar(64) DEFAULT NULL COMMENT '操作人姓名',
+  `operate_remark` varchar(500) DEFAULT NULL COMMENT '操作备注',
+  `operate_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
+  `create_by` varchar(64) DEFAULT '' COMMENT '创建人',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新人',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标记',
+  PRIMARY KEY (`id`),
+  KEY `idx_order_id` (`order_id`),
+  KEY `idx_order_no` (`order_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='酒店订单日志表';
 
+-- ----------------------------
+-- 17. 酒店账单主表
+-- ----------------------------
+DROP TABLE IF EXISTS `hotel_bill`;
+CREATE TABLE `hotel_bill`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `bill_no` varchar(64) NOT NULL COMMENT '账单号',
+  `hotel_id` bigint NOT NULL COMMENT '酒店ID',
+  `hotel_name` varchar(128) NOT NULL COMMENT '酒店名称',
+  `statement_start_date` date NOT NULL COMMENT '结算开始日期',
+  `statement_end_date` date NOT NULL COMMENT '结算结束日期',
+  `order_count` int NOT NULL DEFAULT 0 COMMENT '订单数量',
+  `room_night_count` int NOT NULL DEFAULT 0 COMMENT '间夜数',
+  `total_room_amount` decimal(12, 2) NOT NULL DEFAULT 0.00 COMMENT '总房费',
+  `total_commission_amount` decimal(12, 2) NOT NULL DEFAULT 0.00 COMMENT '总佣金',
+  `total_settlement_amount` decimal(12, 2) NOT NULL DEFAULT 0.00 COMMENT '应结算金额',
+  `bill_status` varchar(32) NOT NULL DEFAULT 'PENDING_CONFIRM' COMMENT '账单状态',
+  `dispute_status` varchar(32) DEFAULT NULL COMMENT '异议状态',
+  `confirm_time` datetime DEFAULT NULL COMMENT '确认时间',
+  `confirm_user_id` bigint DEFAULT NULL COMMENT '确认人ID',
+  `confirm_user_name` varchar(64) DEFAULT NULL COMMENT '确认人姓名',
+  `payment_status` varchar(32) NOT NULL DEFAULT 'UNPAID' COMMENT '付款状态',
+  `generate_mode` varchar(32) DEFAULT NULL COMMENT '生成方式：AUTO/MANUAL',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `create_by` varchar(64) DEFAULT '' COMMENT '创建人',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新人',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标记',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_bill_no` (`bill_no`),
+  KEY `idx_hotel_id` (`hotel_id`),
+  KEY `idx_bill_status` (`bill_status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='酒店账单主表';
 
+-- ----------------------------
+-- 18. 酒店账单明细表
+-- ----------------------------
+DROP TABLE IF EXISTS `hotel_bill_order`;
+CREATE TABLE `hotel_bill_order`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `bill_id` bigint NOT NULL COMMENT '账单ID',
+  `bill_no` varchar(64) NOT NULL COMMENT '账单号',
+  `order_id` bigint NOT NULL COMMENT '订单ID',
+  `order_no` varchar(64) NOT NULL COMMENT '订单号',
+  `hotel_id` bigint NOT NULL COMMENT '酒店ID',
+  `room_type_id` bigint DEFAULT NULL COMMENT '房型ID',
+  `room_type_name` varchar(128) DEFAULT NULL COMMENT '房型名称',
+  `checkin_date` date DEFAULT NULL COMMENT '入住日期',
+  `checkout_date` date DEFAULT NULL COMMENT '离店日期',
+  `night_count` int DEFAULT NULL COMMENT '入住晚数',
+  `order_amount` decimal(12, 2) NOT NULL DEFAULT 0.00 COMMENT '订单金额',
+  `commission_amount` decimal(12, 2) NOT NULL DEFAULT 0.00 COMMENT '佣金金额',
+  `settlement_amount` decimal(12, 2) NOT NULL DEFAULT 0.00 COMMENT '结算金额',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `create_by` varchar(64) DEFAULT '' COMMENT '创建人',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新人',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标记',
+  PRIMARY KEY (`id`),
+  KEY `idx_bill_id` (`bill_id`),
+  KEY `idx_order_id` (`order_id`),
+  KEY `idx_order_no` (`order_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='酒店账单明细表';
+
+-- ----------------------------
+-- 19. 酒店账单对账日志表
+-- ----------------------------
+DROP TABLE IF EXISTS `hotel_bill_check_log`;
+CREATE TABLE `hotel_bill_check_log`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `bill_id` bigint NOT NULL COMMENT '账单ID',
+  `bill_no` varchar(64) NOT NULL COMMENT '账单号',
+  `operate_type` varchar(32) NOT NULL COMMENT '操作类型：GENERATE/CONFIRM/DISPUTE/RECALCULATE',
+  `operate_user_id` bigint DEFAULT NULL COMMENT '操作人ID',
+  `operate_user_name` varchar(64) DEFAULT NULL COMMENT '操作人姓名',
+  `operate_remark` varchar(500) DEFAULT NULL COMMENT '操作备注',
+  `operate_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
+  `create_by` varchar(64) DEFAULT '' COMMENT '创建人',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新人',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标记',
+  PRIMARY KEY (`id`),
+  KEY `idx_bill_id` (`bill_id`),
+  KEY `idx_bill_no` (`bill_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='酒店账单对账日志表';
+
+-- ----------------------------
+-- 20. 酒店付款记录表
+-- ----------------------------
+DROP TABLE IF EXISTS `hotel_bill_payment`;
+CREATE TABLE `hotel_bill_payment`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `bill_id` bigint NOT NULL COMMENT '账单ID',
+  `bill_no` varchar(64) NOT NULL COMMENT '账单号',
+  `payment_no` varchar(64) NOT NULL COMMENT '付款单号',
+  `payment_amount` decimal(12, 2) NOT NULL DEFAULT 0.00 COMMENT '付款金额',
+  `payment_status` varchar(32) NOT NULL DEFAULT 'APPLYING' COMMENT '付款状态：APPLYING/APPROVED/PAID/FAILED',
+  `payment_time` datetime DEFAULT NULL COMMENT '付款时间',
+  `voucher_file_ids` varchar(500) DEFAULT NULL COMMENT '付款凭证附件',
+  `invoice_title` varchar(128) DEFAULT NULL COMMENT '发票抬头',
+  `invoice_tax_no` varchar(64) DEFAULT NULL COMMENT '税号',
+  `bank_account_name` varchar(128) DEFAULT NULL COMMENT '收款账户名',
+  `bank_name` varchar(128) DEFAULT NULL COMMENT '开户行',
+  `bank_account_no` varchar(64) DEFAULT NULL COMMENT '收款账号',
+  `apply_user_id` bigint DEFAULT NULL COMMENT '申请人ID',
+  `apply_user_name` varchar(64) DEFAULT NULL COMMENT '申请人姓名',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `create_by` varchar(64) DEFAULT '' COMMENT '创建人',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新人',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标记',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_payment_no` (`payment_no`),
+  KEY `idx_bill_id` (`bill_id`),
+  KEY `idx_bill_no` (`bill_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='酒店付款记录表';
+
+-- ----------------------------
+-- 21. 酒店业务配置表
+-- ----------------------------
+DROP TABLE IF EXISTS `hotel_business_config`;
+CREATE TABLE `hotel_business_config`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `config_key` varchar(64) NOT NULL COMMENT '配置键',
+  `config_name` varchar(128) NOT NULL COMMENT '配置名称',
+  `config_group` varchar(64) NOT NULL COMMENT '配置分组',
+  `config_value` text COMMENT '配置值',
+  `config_type` varchar(32) NOT NULL DEFAULT 'TEXT' COMMENT '配置类型：TEXT/JSON/NUMBER/BOOLEAN',
+  `status` char(1) NOT NULL DEFAULT '0' COMMENT '状态（0正常 1停用）',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `create_by` varchar(64) DEFAULT '' COMMENT '创建人',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新人',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标记',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_config_key` (`config_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='酒店业务配置表';
+
+-- ----------------------------
+-- 22. 酒店业务配置日志表
+-- ----------------------------
+DROP TABLE IF EXISTS `hotel_business_config_log`;
+CREATE TABLE `hotel_business_config_log`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `config_id` bigint NOT NULL COMMENT '配置ID',
+  `config_key` varchar(64) NOT NULL COMMENT '配置键',
+  `before_value` text COMMENT '变更前值',
+  `after_value` text COMMENT '变更后值',
+  `operate_user_id` bigint DEFAULT NULL COMMENT '操作人ID',
+  `operate_user_name` varchar(64) DEFAULT NULL COMMENT '操作人姓名',
+  `operate_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `create_by` varchar(64) DEFAULT '' COMMENT '创建人',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新人',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标记',
+  PRIMARY KEY (`id`),
+  KEY `idx_config_id` (`config_id`),
+  KEY `idx_config_key` (`config_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='酒店业务配置日志表';
+
+-- ----------------------------
+-- 初始化配置数据
+-- ----------------------------
+INSERT INTO `hotel_business_config` (`config_key`, `config_name`, `config_group`, `config_value`, `config_type`, `status`, `remark`, `create_by`, `create_time`, `update_by`, `update_time`, `del_flag`) VALUES
+('hotel.defaultCommissionMode', '默认佣金模式', 'HOTEL', 'BASE_PRICE', 'TEXT', '0', '默认佣金模式', 'admin', NOW(), 'admin', NOW(), '0'),
+('hotel.defaultCommissionRate', '默认佣金比例', 'HOTEL', '0.1200', 'NUMBER', '0', '默认佣金比例', 'admin', NOW(), 'admin', NOW(), '0'),
+('hotel.defaultRefundRule', '默认退款规则', 'HOTEL', 'TIME_LIMIT', 'TEXT', '0', '默认退款规则', 'admin', NOW(), 'admin', NOW(), '0'),
+('hotel.bookingMinDays', '最少预订天数', 'HOTEL', '1', 'NUMBER', '0', '最少预订天数', 'admin', NOW(), 'admin', NOW(), '0'),
+('hotel.bookingMaxDays', '最大预订天数', 'HOTEL', '30', 'NUMBER', '0', '最大预订天数', 'admin', NOW(), 'admin', NOW(), '0'),
+('hotel.orderAutoConfirmMinutes', '订单自动确认分钟数', 'ORDER', '30', 'NUMBER', '0', '订单自动确认分钟数', 'admin', NOW(), 'admin', NOW(), '0'),
+('hotel.orderAutoCancelMinutes', '订单自动取消分钟数', 'ORDER', '15', 'NUMBER', '0', '订单自动取消分钟数', 'admin', NOW(), 'admin', NOW(), '0'),
+('hotel.orderAutoFinishDays', '订单自动完成天数', 'ORDER', '3', 'NUMBER', '0', '订单自动完成天数', 'admin', NOW(), 'admin', NOW(), '0'),
+('hotel.billCycleType', '账单结算周期', 'FINANCE', 'MONTHLY', 'TEXT', '0', '账单结算周期', 'admin', NOW(), 'admin', NOW(), '0'),
+('hotel.billGenerateDay', '账单生成日', 'FINANCE', '1', 'NUMBER', '0', '账单生成日', 'admin', NOW(), 'admin', NOW(), '0');
+
+-- ----------------------------
+-- 若依菜单初始化（酒店业务）
+-- 说明：菜单ID从 2000 开始，避免与基础菜单冲突
+-- 一级目录：酒店管理
+-- 二级菜单：合作中心、运营中心、交易服务、财务结算、业务配置
+-- 三级按钮：按若依标准权限点初始化
+-- ----------------------------
+INSERT INTO `sys_menu` VALUES ('2000', '酒店管理', '0', '5', 'hotel', '', '', '', 1, 0, 'M', '0', '0', '', 'hotel', 'admin', sysdate(), '', NULL, '酒店管理目录');
+
+INSERT INTO `sys_menu` VALUES ('2001', '酒店合作中心', '2000', '1', 'cooperate', '', '', '', 1, 0, 'M', '0', '0', '', 'peoples', 'admin', sysdate(), '', NULL, '酒店合作中心目录');
+INSERT INTO `sys_menu` VALUES ('2002', '酒店运营中心', '2000', '2', 'operate', '', '', '', 1, 0, 'M', '0', '0', '', 'build', 'admin', sysdate(), '', NULL, '酒店运营中心目录');
+INSERT INTO `sys_menu` VALUES ('2003', '交易与服务中心', '2000', '3', 'service', '', '', '', 1, 0, 'M', '0', '0', '', 'form', 'admin', sysdate(), '', NULL, '交易与服务中心目录');
+INSERT INTO `sys_menu` VALUES ('2004', '财务结算中心', '2000', '4', 'finance', '', '', '', 1, 0, 'M', '0', '0', '', 'money', 'admin', sysdate(), '', NULL, '财务结算中心目录');
+INSERT INTO `sys_menu` VALUES ('2005', '酒店业务参数', '2000', '5', 'config', 'hotel/config/index', '', '', 1, 0, 'C', '0', '0', 'hotel:config:list', 'edit', 'admin', sysdate(), '', NULL, '酒店业务参数菜单');
+
+INSERT INTO `sys_menu` VALUES ('2101', '待签约酒店', '2001', '1', 'pending', 'hotel/cooperate/pending/index', '', '', 1, 0, 'C', '0', '0', 'hotel:cooperate:pending:list', 'clipboard', 'admin', sysdate(), '', NULL, '待签约酒店菜单');
+INSERT INTO `sys_menu` VALUES ('2102', '合作酒店', '2001', '2', 'partner', 'hotel/cooperate/partner/index', '', '', 1, 0, 'C', '0', '0', 'hotel:cooperate:partner:list', 'tree-table', 'admin', sysdate(), '', NULL, '合作酒店菜单');
+INSERT INTO `sys_menu` VALUES ('2103', 'BD-酒店归属管理', '2001', '3', 'bind', 'hotel/cooperate/bind/index', '', '', 1, 0, 'C', '0', '0', 'hotel:cooperate:bind:list', 'people', 'admin', sysdate(), '', NULL, 'BD酒店归属管理菜单');
+INSERT INTO `sys_menu` VALUES ('2104', 'BD绩效看板', '2001', '4', 'bdBoard', 'hotel/cooperate/bdBoard/index', '', '', 0, 0, 'C', '0', '0', 'hotel:cooperate:board:list', 'chart', 'admin', sysdate(), '', NULL, 'BD绩效看板菜单');
+
+INSERT INTO `sys_menu` VALUES ('2201', '酒店信息', '2002', '1', 'info', 'hotel/operate/info/index', '', '', 1, 0, 'C', '0', '0', 'hotel:operate:info:list', 'example', 'admin', sysdate(), '', NULL, '酒店信息菜单');
+INSERT INTO `sys_menu` VALUES ('2202', '房型管理', '2002', '2', 'roomType', 'hotel/operate/roomType/index', '', '', 1, 0, 'C', '0', '0', 'hotel:operate:roomType:list', 'nested', 'admin', sysdate(), '', NULL, '房型管理菜单');
+INSERT INTO `sys_menu` VALUES ('2203', '库存价格管理', '2002', '3', 'price', 'hotel/operate/price/index', '', '', 1, 0, 'C', '0', '0', 'hotel:operate:price:list', 'date', 'admin', sysdate(), '', NULL, '库存价格管理菜单');
+
+INSERT INTO `sys_menu` VALUES ('2301', '酒店订单', '2003', '1', 'order', 'hotel/service/order/index', '', '', 1, 0, 'C', '0', '0', 'hotel:service:order:list', 'order', 'admin', sysdate(), '', NULL, '酒店订单菜单');
+
+INSERT INTO `sys_menu` VALUES ('2401', '账单管理', '2004', '1', 'bill', 'hotel/finance/bill/index', '', '', 1, 0, 'C', '0', '0', 'hotel:finance:bill:list', 'skill', 'admin', sysdate(), '', NULL, '账单管理菜单');
+
+INSERT INTO `sys_menu` VALUES ('2501', '参数查询', '2005', '1', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:config:query', '#', 'admin', sysdate(), '', NULL, '酒店业务参数查询');
+INSERT INTO `sys_menu` VALUES ('2502', '参数保存', '2005', '2', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:config:edit', '#', 'admin', sysdate(), '', NULL, '酒店业务参数保存');
+INSERT INTO `sys_menu` VALUES ('2503', '配置日志', '2005', '3', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:config:log', '#', 'admin', sysdate(), '', NULL, '酒店业务参数日志');
+
+INSERT INTO `sys_menu` VALUES ('2601', '待签约查询', '2101', '1', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:cooperate:pending:query', '#', 'admin', sysdate(), '', NULL, '待签约酒店查询');
+INSERT INTO `sys_menu` VALUES ('2602', '待签约新增', '2101', '2', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:cooperate:pending:add', '#', 'admin', sysdate(), '', NULL, '待签约酒店新增');
+INSERT INTO `sys_menu` VALUES ('2603', '待签约审核', '2101', '3', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:cooperate:pending:audit', '#', 'admin', sysdate(), '', NULL, '待签约酒店审核');
+INSERT INTO `sys_menu` VALUES ('2604', '待签约删除', '2101', '4', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:cooperate:pending:remove', '#', 'admin', sysdate(), '', NULL, '待签约酒店删除');
+INSERT INTO `sys_menu` VALUES ('2605', '待签约导出', '2101', '5', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:cooperate:pending:export', '#', 'admin', sysdate(), '', NULL, '待签约酒店导出');
+
+INSERT INTO `sys_menu` VALUES ('2611', '合作酒店查询', '2102', '1', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:cooperate:partner:query', '#', 'admin', sysdate(), '', NULL, '合作酒店查询');
+INSERT INTO `sys_menu` VALUES ('2612', '合作酒店修改', '2102', '2', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:cooperate:partner:edit', '#', 'admin', sysdate(), '', NULL, '合作酒店修改');
+INSERT INTO `sys_menu` VALUES ('2613', '合作状态修改', '2102', '3', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:cooperate:partner:status', '#', 'admin', sysdate(), '', NULL, '合作状态修改');
+INSERT INTO `sys_menu` VALUES ('2614', '合作酒店导出', '2102', '4', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:cooperate:partner:export', '#', 'admin', sysdate(), '', NULL, '合作酒店导出');
+INSERT INTO `sys_menu` VALUES ('2615', '账号密码重置', '2102', '5', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:cooperate:partner:resetPwd', '#', 'admin', sysdate(), '', NULL, '酒店账号密码重置');
+
+INSERT INTO `sys_menu` VALUES ('2621', '归属查询', '2103', '1', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:cooperate:bind:query', '#', 'admin', sysdate(), '', NULL, '归属关系查询');
+INSERT INTO `sys_menu` VALUES ('2622', '归属绑定', '2103', '2', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:cooperate:bind:add', '#', 'admin', sysdate(), '', NULL, '归属绑定');
+INSERT INTO `sys_menu` VALUES ('2623', '归属解绑', '2103', '3', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:cooperate:bind:remove', '#', 'admin', sysdate(), '', NULL, '归属解绑');
+INSERT INTO `sys_menu` VALUES ('2624', '归属转移', '2103', '4', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:cooperate:bind:transfer', '#', 'admin', sysdate(), '', NULL, '归属转移');
+INSERT INTO `sys_menu` VALUES ('2625', '归属历史', '2103', '5', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:cooperate:bind:history', '#', 'admin', sysdate(), '', NULL, '归属历史查询');
+
+INSERT INTO `sys_menu` VALUES ('2631', '酒店信息查询', '2201', '1', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:operate:info:query', '#', 'admin', sysdate(), '', NULL, '酒店信息查询');
+INSERT INTO `sys_menu` VALUES ('2632', '酒店信息新增', '2201', '2', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:operate:info:add', '#', 'admin', sysdate(), '', NULL, '酒店信息新增');
+INSERT INTO `sys_menu` VALUES ('2633', '酒店信息修改', '2201', '3', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:operate:info:edit', '#', 'admin', sysdate(), '', NULL, '酒店信息修改');
+INSERT INTO `sys_menu` VALUES ('2634', '酒店信息上架', '2201', '4', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:operate:info:putOn', '#', 'admin', sysdate(), '', NULL, '酒店信息上架');
+INSERT INTO `sys_menu` VALUES ('2635', '酒店信息下架', '2201', '5', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:operate:info:putOff', '#', 'admin', sysdate(), '', NULL, '酒店信息下架');
+
+INSERT INTO `sys_menu` VALUES ('2641', '房型查询', '2202', '1', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:operate:roomType:query', '#', 'admin', sysdate(), '', NULL, '房型查询');
+INSERT INTO `sys_menu` VALUES ('2642', '房型新增', '2202', '2', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:operate:roomType:add', '#', 'admin', sysdate(), '', NULL, '房型新增');
+INSERT INTO `sys_menu` VALUES ('2643', '房型修改', '2202', '3', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:operate:roomType:edit', '#', 'admin', sysdate(), '', NULL, '房型修改');
+INSERT INTO `sys_menu` VALUES ('2644', '房型删除', '2202', '4', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:operate:roomType:remove', '#', 'admin', sysdate(), '', NULL, '房型删除');
+INSERT INTO `sys_menu` VALUES ('2645', '房型状态修改', '2202', '5', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:operate:roomType:status', '#', 'admin', sysdate(), '', NULL, '房型状态修改');
+INSERT INTO `sys_menu` VALUES ('2646', '房型排序', '2202', '6', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:operate:roomType:sort', '#', 'admin', sysdate(), '', NULL, '房型排序');
+INSERT INTO `sys_menu` VALUES ('2647', '房型复制', '2202', '7', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:operate:roomType:copy', '#', 'admin', sysdate(), '', NULL, '房型复制');
+
+INSERT INTO `sys_menu` VALUES ('2651', '价格日历查询', '2203', '1', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:operate:price:query', '#', 'admin', sysdate(), '', NULL, '价格日历查询');
+INSERT INTO `sys_menu` VALUES ('2652', '单日设置', '2203', '2', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:operate:price:daily', '#', 'admin', sysdate(), '', NULL, '单日价格库存设置');
+INSERT INTO `sys_menu` VALUES ('2653', '批量设置', '2203', '3', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:operate:price:batch', '#', 'admin', sysdate(), '', NULL, '批量价格库存设置');
+INSERT INTO `sys_menu` VALUES ('2654', '批量关房', '2203', '4', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:operate:price:close', '#', 'admin', sysdate(), '', NULL, '批量关房');
+INSERT INTO `sys_menu` VALUES ('2655', '批量复制', '2203', '5', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:operate:price:copy', '#', 'admin', sysdate(), '', NULL, '批量复制价格库存');
+INSERT INTO `sys_menu` VALUES ('2656', '恢复默认', '2203', '6', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:operate:price:restore', '#', 'admin', sysdate(), '', NULL, '恢复默认价格库存');
+INSERT INTO `sys_menu` VALUES ('2657', '价格日志查询', '2203', '7', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:operate:price:history', '#', 'admin', sysdate(), '', NULL, '价格日志查询');
+
+INSERT INTO `sys_menu` VALUES ('2661', '订单查询', '2301', '1', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:service:order:query', '#', 'admin', sysdate(), '', NULL, '订单查询');
+INSERT INTO `sys_menu` VALUES ('2662', '订单确认', '2301', '2', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:service:order:confirm', '#', 'admin', sysdate(), '', NULL, '订单确认');
+INSERT INTO `sys_menu` VALUES ('2663', '订单取消', '2301', '3', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:service:order:cancel', '#', 'admin', sysdate(), '', NULL, '订单取消');
+INSERT INTO `sys_menu` VALUES ('2664', '办理入住', '2301', '4', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:service:order:checkin', '#', 'admin', sysdate(), '', NULL, '办理入住');
+INSERT INTO `sys_menu` VALUES ('2665', '办理离店', '2301', '5', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:service:order:checkout', '#', 'admin', sysdate(), '', NULL, '办理离店');
+INSERT INTO `sys_menu` VALUES ('2666', '订单备注', '2301', '6', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:service:order:remark', '#', 'admin', sysdate(), '', NULL, '订单备注');
+INSERT INTO `sys_menu` VALUES ('2667', '订单导出', '2301', '7', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:service:order:export', '#', 'admin', sysdate(), '', NULL, '订单导出');
+INSERT INTO `sys_menu` VALUES ('2668', '退款处理', '2301', '8', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:service:order:refund', '#', 'admin', sysdate(), '', NULL, '退款处理');
+INSERT INTO `sys_menu` VALUES ('2669', '纠纷处理', '2301', '9', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:service:order:dispute', '#', 'admin', sysdate(), '', NULL, '纠纷处理');
+
+INSERT INTO `sys_menu` VALUES ('2671', '账单查询', '2401', '1', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:finance:bill:query', '#', 'admin', sysdate(), '', NULL, '账单查询');
+INSERT INTO `sys_menu` VALUES ('2672', '账单生成', '2401', '2', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:finance:bill:generate', '#', 'admin', sysdate(), '', NULL, '账单生成');
+INSERT INTO `sys_menu` VALUES ('2673', '账单确认', '2401', '3', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:finance:bill:confirm', '#', 'admin', sysdate(), '', NULL, '账单确认');
+INSERT INTO `sys_menu` VALUES ('2674', '账单异议', '2401', '4', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:finance:bill:dispute', '#', 'admin', sysdate(), '', NULL, '账单异议');
+INSERT INTO `sys_menu` VALUES ('2675', '重新核算', '2401', '5', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:finance:bill:recalculate', '#', 'admin', sysdate(), '', NULL, '重新核算');
+INSERT INTO `sys_menu` VALUES ('2676', '发起付款', '2401', '6', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:finance:bill:payment', '#', 'admin', sysdate(), '', NULL, '发起付款');
+INSERT INTO `sys_menu` VALUES ('2677', '账单导出', '2401', '7', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:finance:bill:export', '#', 'admin', sysdate(), '', NULL, '账单导出');
+
+-- ----------------------------
+-- 管理员角色授权（酒店业务）
+-- 说明：默认授权给超级管理员角色 role_id=1
+-- ----------------------------
+INSERT INTO `sys_role_menu` (`role_id`, `menu_id`) VALUES
+(1, 2000),(1, 2001),(1, 2002),(1, 2003),(1, 2004),(1, 2005),
+(1, 2101),(1, 2102),(1, 2103),(1, 2104),
+(1, 2201),(1, 2202),(1, 2203),
+(1, 2301),
+(1, 2401),
+(1, 2501),(1, 2502),(1, 2503),
+(1, 2601),(1, 2602),(1, 2603),(1, 2604),(1, 2605),
+(1, 2611),(1, 2612),(1, 2613),(1, 2614),(1, 2615),
+(1, 2621),(1, 2622),(1, 2623),(1, 2624),(1, 2625),
+(1, 2631),(1, 2632),(1, 2633),(1, 2634),(1, 2635),
+(1, 2641),(1, 2642),(1, 2643),(1, 2644),(1, 2645),(1, 2646),(1, 2647),
+(1, 2651),(1, 2652),(1, 2653),(1, 2654),(1, 2655),(1, 2656),(1, 2657),
+(1, 2661),(1, 2662),(1, 2663),(1, 2664),(1, 2665),(1, 2666),(1, 2667),(1, 2668),(1, 2669),
+(1, 2671),(1, 2672),(1, 2673),(1, 2674),(1, 2675),(1, 2676),(1, 2677);
+
+SET FOREIGN_KEY_CHECKS = 1;
