@@ -1,0 +1,917 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yimamerchant.system.hotel.mapper.HotelManageMapper">
+
+    <sql id="partnerColumns">
+        p.hotel_id as hotelId, p.hotel_code as hotelCode, p.hotel_name as hotelName, p.hotel_name_en as hotelNameEn,
+        p.brand_name as brandName, p.star_level as starLevel, p.contact_name as contactName, p.contact_phone as contactPhone,
+        p.contact_email as contactEmail, p.province_code as provinceCode, p.province_name as provinceName,
+        p.city_code as cityCode, p.city_name as cityName, p.district_code as districtCode, p.district_name as districtName,
+        p.address as address, p.longitude as longitude, p.latitude as latitude, p.cooperate_status as cooperateStatus,
+        p.source_apply_id as sourceApplyId, p.sign_date as signDate, p.contract_start_date as contractStartDate,
+        p.contract_end_date as contractEndDate, p.commission_mode as commissionMode, p.commission_rate as commissionRate,
+        p.markup_rate as markupRate, p.bd_user_id as bdUserId, coalesce(p.bd_user_name, u.nick_name) as bdUserName,
+        p.account_status as accountStatus, p.status_reason as statusReason, p.remark as remark, p.create_by as createBy,
+        p.create_time as createTime, p.update_by as updateBy, p.update_time as updateTime,
+        pr.hotel_logo as hotelLogo, pr.cover_image as coverImage, pr.hotel_desc as hotelDesc, pr.service_tags as serviceTags,
+        pr.traffic_info as trafficInfo, pr.customer_service_time as customerServiceTime, pr.checkin_time as checkinTime,
+        pr.checkout_time as checkoutTime, pr.child_policy as childPolicy, pr.pet_policy as petPolicy,
+        pr.cancel_policy as cancelPolicy, pr.sale_status as saleStatus, pr.sync_time as syncTime,
+        ifnull(mo.monthly_order_count, 0) as monthlyOrderCount, ifnull(mo.monthly_sale_amount, 0) as monthlySaleAmount
+    </sql>
+
+    <sql id="partnerJoin">
+        from hotel_partner p
+        left join hotel_profile pr on p.hotel_id = pr.hotel_id and pr.del_flag = '0'
+        left join sys_user u on p.bd_user_id = u.user_id
+        left join (
+            select hotel_id, count(1) as monthly_order_count, ifnull(sum(order_amount), 0) as monthly_sale_amount
+            from hotel_order
+            where del_flag = '0' and date_format(create_time, '%Y-%m') = date_format(now(), '%Y-%m')
+            group by hotel_id
+        ) mo on p.hotel_id = mo.hotel_id
+        where p.del_flag = '0'
+    </sql>
+
+    <select id="selectPendingList" parameterType="com.yimamerchant.system.hotel.domain.HotelPendingApply" resultType="com.yimamerchant.system.hotel.domain.HotelPendingApply">
+        select id as id, apply_no as applyNo, hotel_name as hotelName, contact_name as contactName, contact_phone as contactPhone,
+        province_code as provinceCode, province_name as provinceName, city_code as cityCode, city_name as cityName,
+        district_code as districtCode, district_name as districtName, address as address, longitude as longitude,
+        latitude as latitude, business_license_files as businessLicenseFiles, special_license_files as specialLicenseFiles,
+        health_license_files as healthLicenseFiles, apply_remark as applyRemark, apply_status as applyStatus,
+        applicant_id as applicantId, applicant_name as applicantName, apply_time as applyTime, audit_time as auditTime,
+        audit_user_id as auditUserId, audit_user_name as auditUserName, reject_reason as rejectReason,
+        partner_hotel_id as partnerHotelId, last_operate_time as lastOperateTime, remark as remark,
+        create_by as createBy, create_time as createTime, update_by as updateBy, update_time as updateTime
+        from hotel_pending_apply
+        where del_flag = '0'
+        <if test="hotelName != null and hotelName != ''">and hotel_name like concat('%', #{hotelName}, '%')</if>
+        <if test="applyStatus != null and applyStatus != ''">and apply_status = #{applyStatus}</if>
+        <if test="beginApplyTime != null and beginApplyTime != ''">and date_format(apply_time, '%Y-%m-%d') &gt;= #{beginApplyTime}</if>
+        <if test="endApplyTime != null and endApplyTime != ''">and date_format(apply_time, '%Y-%m-%d') &lt;= #{endApplyTime}</if>
+        order by apply_time desc
+    </select>
+
+    <select id="selectPendingById" parameterType="Long" resultType="com.yimamerchant.system.hotel.domain.HotelPendingApply">
+        select id as id, apply_no as applyNo, hotel_name as hotelName, contact_name as contactName, contact_phone as contactPhone,
+        province_code as provinceCode, province_name as provinceName, city_code as cityCode, city_name as cityName,
+        district_code as districtCode, district_name as districtName, address as address, longitude as longitude,
+        latitude as latitude, business_license_files as businessLicenseFiles, special_license_files as specialLicenseFiles,
+        health_license_files as healthLicenseFiles, apply_remark as applyRemark, apply_status as applyStatus,
+        applicant_id as applicantId, applicant_name as applicantName, apply_time as applyTime, audit_time as auditTime,
+        audit_user_id as auditUserId, audit_user_name as auditUserName, reject_reason as rejectReason,
+        partner_hotel_id as partnerHotelId, last_operate_time as lastOperateTime, remark as remark,
+        create_by as createBy, create_time as createTime, update_by as updateBy, update_time as updateTime
+        from hotel_pending_apply where id = #{id} and del_flag = '0'
+    </select>
+
+    <insert id="insertPending" parameterType="com.yimamerchant.system.hotel.domain.HotelPendingApply" useGeneratedKeys="true" keyProperty="id">
+        insert into hotel_pending_apply(
+            apply_no, hotel_name, contact_name, contact_phone, province_code, province_name, city_code, city_name,
+            district_code, district_name, address, longitude, latitude, business_license_files, special_license_files,
+            health_license_files, apply_remark, apply_status, applicant_id, applicant_name, apply_time, last_operate_time,
+            remark, create_by, create_time, update_by, update_time, del_flag
+        ) values (
+            #{applyNo}, #{hotelName}, #{contactName}, #{contactPhone}, #{provinceCode}, #{provinceName}, #{cityCode}, #{cityName},
+            #{districtCode}, #{districtName}, #{address}, #{longitude}, #{latitude}, #{businessLicenseFiles}, #{specialLicenseFiles},
+            #{healthLicenseFiles}, #{applyRemark}, #{applyStatus}, #{applicantId}, #{applicantName}, #{applyTime}, #{lastOperateTime},
+            #{remark}, #{createBy}, now(), #{createBy}, now(), '0'
+        )
+    </insert>
+
+    <update id="updatePending" parameterType="com.yimamerchant.system.hotel.domain.HotelPendingApply">
+        update hotel_pending_apply
+        <set>
+            <if test="hotelName != null">hotel_name = #{hotelName},</if>
+            <if test="contactName != null">contact_name = #{contactName},</if>
+            <if test="contactPhone != null">contact_phone = #{contactPhone},</if>
+            <if test="provinceCode != null">province_code = #{provinceCode},</if>
+            <if test="provinceName != null">province_name = #{provinceName},</if>
+            <if test="cityCode != null">city_code = #{cityCode},</if>
+            <if test="cityName != null">city_name = #{cityName},</if>
+            <if test="districtCode != null">district_code = #{districtCode},</if>
+            <if test="districtName != null">district_name = #{districtName},</if>
+            <if test="address != null">address = #{address},</if>
+            <if test="longitude != null">longitude = #{longitude},</if>
+            <if test="latitude != null">latitude = #{latitude},</if>
+            <if test="businessLicenseFiles != null">business_license_files = #{businessLicenseFiles},</if>
+            <if test="specialLicenseFiles != null">special_license_files = #{specialLicenseFiles},</if>
+            <if test="healthLicenseFiles != null">health_license_files = #{healthLicenseFiles},</if>
+            <if test="applyRemark != null">apply_remark = #{applyRemark},</if>
+            <if test="applyStatus != null">apply_status = #{applyStatus},</if>
+            <if test="auditTime != null">audit_time = #{auditTime},</if>
+            <if test="auditUserId != null">audit_user_id = #{auditUserId},</if>
+            <if test="auditUserName != null">audit_user_name = #{auditUserName},</if>
+            <if test="rejectReason != null">reject_reason = #{rejectReason},</if>
+            <if test="partnerHotelId != null">partner_hotel_id = #{partnerHotelId},</if>
+            <if test="lastOperateTime != null">last_operate_time = #{lastOperateTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = now()
+        </set>
+        where id = #{id}
+    </update>
+
+    <delete id="deletePendingByIds">
+        update hotel_pending_apply set del_flag = '2', update_time = now()
+        where id in
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <insert id="insertPendingAuditLog" parameterType="com.yimamerchant.system.hotel.domain.HotelPendingAuditLog" useGeneratedKeys="true" keyProperty="id">
+        insert into hotel_pending_audit_log(
+            apply_id, operate_type, operate_user_id, operate_user_name, operate_remark, operate_time, create_by, create_time, update_by, update_time, del_flag
+        ) values (
+            #{applyId}, #{operateType}, #{operateUserId}, #{operateUserName}, #{operateRemark}, now(), #{createBy}, now(), #{createBy}, now(), '0'
+        )
+    </insert>
+
+    <select id="selectPendingAuditLogs" parameterType="Long" resultType="com.yimamerchant.system.hotel.domain.HotelPendingAuditLog">
+        select id as id, apply_id as applyId, operate_type as operateType, operate_user_id as operateUserId,
+        operate_user_name as operateUserName, operate_remark as operateRemark, operate_time as operateTime
+        from hotel_pending_audit_log where apply_id = #{applyId} and del_flag = '0' order by operate_time desc
+    </select>
+
+    <select id="selectPartnerList" parameterType="com.yimamerchant.system.hotel.domain.HotelPartner" resultType="com.yimamerchant.system.hotel.domain.HotelPartner">
+        select <include refid="partnerColumns"/>
+        <include refid="partnerJoin"/>
+        <if test="hotelName != null and hotelName != ''">and p.hotel_name like concat('%', #{hotelName}, '%')</if>
+        <if test="cooperateStatus != null and cooperateStatus != ''">and p.cooperate_status = #{cooperateStatus}</if>
+        <if test="bdUserId != null">and p.bd_user_id = #{bdUserId}</if>
+        <if test="beginSignDate != null and beginSignDate != ''">and date_format(p.sign_date, '%Y-%m-%d') &gt;= #{beginSignDate}</if>
+        <if test="endSignDate != null and endSignDate != ''">and date_format(p.sign_date, '%Y-%m-%d') &lt;= #{endSignDate}</if>
+        order by p.sign_date desc, p.hotel_id desc
+    </select>
+
+    <select id="selectPartnerById" parameterType="Long" resultType="com.yimamerchant.system.hotel.domain.HotelPartner">
+        select <include refid="partnerColumns"/>
+        <include refid="partnerJoin"/>
+        and p.hotel_id = #{hotelId}
+        limit 1
+    </select>
+
+    <insert id="insertPartner" parameterType="com.yimamerchant.system.hotel.domain.HotelPartner" useGeneratedKeys="true" keyProperty="hotelId">
+        insert into hotel_partner(
+            hotel_code, hotel_name, hotel_name_en, brand_name, star_level, contact_name, contact_phone, contact_email,
+            province_code, province_name, city_code, city_name, district_code, district_name, address, longitude, latitude,
+            cooperate_status, source_apply_id, sign_date, contract_start_date, contract_end_date, commission_mode,
+            commission_rate, markup_rate, bd_user_id, account_status, status_reason, remark, create_by, create_time, update_by, update_time, del_flag
+        ) values (
+            #{hotelCode}, #{hotelName}, #{hotelNameEn}, #{brandName}, #{starLevel}, #{contactName}, #{contactPhone}, #{contactEmail},
+            #{provinceCode}, #{provinceName}, #{cityCode}, #{cityName}, #{districtCode}, #{districtName}, #{address}, #{longitude}, #{latitude},
+            #{cooperateStatus}, #{sourceApplyId}, #{signDate}, #{contractStartDate}, #{contractEndDate}, #{commissionMode},
+            #{commissionRate}, #{markupRate}, #{bdUserId}, #{accountStatus}, #{statusReason}, #{remark}, #{createBy}, now(), #{createBy}, now(), '0'
+        )
+    </insert>
+
+    <update id="updatePartner" parameterType="com.yimamerchant.system.hotel.domain.HotelPartner">
+        update hotel_partner
+        <set>
+            <if test="hotelName != null">hotel_name = #{hotelName},</if>
+            <if test="hotelNameEn != null">hotel_name_en = #{hotelNameEn},</if>
+            <if test="brandName != null">brand_name = #{brandName},</if>
+            <if test="starLevel != null">star_level = #{starLevel},</if>
+            <if test="contactName != null">contact_name = #{contactName},</if>
+            <if test="contactPhone != null">contact_phone = #{contactPhone},</if>
+            <if test="contactEmail != null">contact_email = #{contactEmail},</if>
+            <if test="provinceCode != null">province_code = #{provinceCode},</if>
+            <if test="provinceName != null">province_name = #{provinceName},</if>
+            <if test="cityCode != null">city_code = #{cityCode},</if>
+            <if test="cityName != null">city_name = #{cityName},</if>
+            <if test="districtCode != null">district_code = #{districtCode},</if>
+            <if test="districtName != null">district_name = #{districtName},</if>
+            <if test="address != null">address = #{address},</if>
+            <if test="longitude != null">longitude = #{longitude},</if>
+            <if test="latitude != null">latitude = #{latitude},</if>
+            <if test="cooperateStatus != null">cooperate_status = #{cooperateStatus},</if>
+            <if test="contractStartDate != null">contract_start_date = #{contractStartDate},</if>
+            <if test="contractEndDate != null">contract_end_date = #{contractEndDate},</if>
+            <if test="commissionMode != null">commission_mode = #{commissionMode},</if>
+            <if test="commissionRate != null">commission_rate = #{commissionRate},</if>
+            <if test="markupRate != null">markup_rate = #{markupRate},</if>
+            <if test="accountStatus != null">account_status = #{accountStatus},</if>
+            <if test="statusReason != null">status_reason = #{statusReason},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = now()
+        </set>
+        where hotel_id = #{hotelId}
+    </update>
+
+    <update id="updatePartnerBdInfo">
+        update hotel_partner p
+        left join sys_user u on u.user_id = #{bdUserId}
+        set p.bd_user_id = #{bdUserId},
+            p.bd_user_name = case when #{bdUserId} is null then null else u.nick_name end,
+            p.update_time = now()
+        where p.hotel_id = #{hotelId}
+    </update>
+
+    <select id="selectPartnerStatistics" parameterType="com.yimamerchant.system.hotel.domain.HotelPartner" resultType="com.yimamerchant.system.hotel.domain.HotelPartnerStatistics">
+        select count(1) as totalCount,
+        sum(case when p.cooperate_status = 'NORMAL' then 1 else 0 end) as normalCount,
+        sum(case when date_format(p.create_time, '%Y-%m') = date_format(now(), '%Y-%m') then 1 else 0 end) as monthlyNewCount,
+        ifnull(sum(mo.monthly_sale_amount), 0) as monthlySalesAmount
+        from hotel_partner p
+        left join (
+            select hotel_id, ifnull(sum(order_amount), 0) as monthly_sale_amount
+            from hotel_order where del_flag = '0' and date_format(create_time, '%Y-%m') = date_format(now(), '%Y-%m')
+            group by hotel_id
+        ) mo on p.hotel_id = mo.hotel_id
+        where p.del_flag = '0'
+    </select>
+
+    <select id="selectPartnerContracts" parameterType="Long" resultType="com.yimamerchant.system.hotel.domain.HotelContract">
+        select id as id, hotel_id as hotelId, contract_no as contractNo, contract_name as contractName,
+        contract_file_ids as contractFileIds, contract_start_date as contractStartDate, contract_end_date as contractEndDate,
+        commission_mode as commissionMode, commission_rate as commissionRate, markup_rate as markupRate,
+        contract_status as contractStatus, sign_user_id as signUserId, sign_user_name as signUserName,
+        remark as remark, create_by as createBy, create_time as createTime, update_by as updateBy, update_time as updateTime
+        from hotel_contract where hotel_id = #{hotelId} and del_flag = '0' order by id desc
+    </select>
+
+    <select id="selectActiveContractByHotelId" parameterType="Long" resultType="com.yimamerchant.system.hotel.domain.HotelContract">
+        select id as id, hotel_id as hotelId, contract_no as contractNo, contract_name as contractName,
+        contract_file_ids as contractFileIds, contract_start_date as contractStartDate, contract_end_date as contractEndDate,
+        commission_mode as commissionMode, commission_rate as commissionRate, markup_rate as markupRate,
+        contract_status as contractStatus, sign_user_id as signUserId, sign_user_name as signUserName
+        from hotel_contract where hotel_id = #{hotelId} and del_flag = '0' order by id desc limit 1
+    </select>
+
+    <insert id="insertContract" parameterType="com.yimamerchant.system.hotel.domain.HotelContract" useGeneratedKeys="true" keyProperty="id">
+        insert into hotel_contract(
+            hotel_id, contract_no, contract_name, contract_file_ids, contract_start_date, contract_end_date,
+            commission_mode, commission_rate, markup_rate, contract_status, sign_user_id, sign_user_name,
+            remark, create_by, create_time, update_by, update_time, del_flag
+        ) values (
+            #{hotelId}, #{contractNo}, #{contractName}, #{contractFileIds}, #{contractStartDate}, #{contractEndDate},
+            #{commissionMode}, #{commissionRate}, #{markupRate}, #{contractStatus}, #{signUserId}, #{signUserName},
+            #{remark}, #{createBy}, now(), #{createBy}, now(), '0'
+        )
+    </insert>
+
+    <update id="updateContractByHotelId" parameterType="com.yimamerchant.system.hotel.domain.HotelContract">
+        update hotel_contract
+        <set>
+            <if test="contractName != null">contract_name = #{contractName},</if>
+            <if test="contractFileIds != null">contract_file_ids = #{contractFileIds},</if>
+            <if test="contractStartDate != null">contract_start_date = #{contractStartDate},</if>
+            <if test="contractEndDate != null">contract_end_date = #{contractEndDate},</if>
+            <if test="commissionMode != null">commission_mode = #{commissionMode},</if>
+            <if test="commissionRate != null">commission_rate = #{commissionRate},</if>
+            <if test="markupRate != null">markup_rate = #{markupRate},</if>
+            <if test="contractStatus != null">contract_status = #{contractStatus},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = now()
+        </set>
+        where hotel_id = #{hotelId} and del_flag = '0'
+    </update>
+
+    <select id="selectPartnerAccounts" parameterType="Long" resultType="com.yimamerchant.system.hotel.domain.HotelAccount">
+        select id as id, hotel_id as hotelId, sys_user_id as sysUserId, account_type as accountType, account_name as accountName,
+        nick_name as nickName, mobile as mobile, email as email, role_names as roleNames, account_status as accountStatus,
+        last_login_time as lastLoginTime, remark as remark, create_by as createBy, create_time as createTime,
+        update_by as updateBy, update_time as updateTime
+        from hotel_account where hotel_id = #{hotelId} and del_flag = '0' order by id desc
+    </select>
+
+    <insert id="insertAccount" parameterType="com.yimamerchant.system.hotel.domain.HotelAccount" useGeneratedKeys="true" keyProperty="id">
+        insert into hotel_account(
+            hotel_id, sys_user_id, account_type, account_name, nick_name, mobile, email, role_names, account_status,
+            last_login_time, remark, create_by, create_time, update_by, update_time, del_flag
+        ) values (
+            #{hotelId}, #{sysUserId}, #{accountType}, #{accountName}, #{nickName}, #{mobile}, #{email}, #{roleNames}, #{accountStatus},
+            #{lastLoginTime}, #{remark}, #{createBy}, now(), #{createBy}, now(), '0'
+        )
+    </insert>
+
+    <update id="updateAccountByHotelId" parameterType="com.yimamerchant.system.hotel.domain.HotelAccount">
+        update hotel_account
+        <set>
+            <if test="accountName != null">account_name = #{accountName},</if>
+            <if test="nickName != null">nick_name = #{nickName},</if>
+            <if test="mobile != null">mobile = #{mobile},</if>
+            <if test="email != null">email = #{email},</if>
+            <if test="roleNames != null">role_names = #{roleNames},</if>
+            <if test="accountStatus != null">account_status = #{accountStatus},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = now()
+        </set>
+        where hotel_id = #{hotelId} and del_flag = '0'
+    </update>
+
+    <select id="selectBindList" parameterType="com.yimamerchant.system.hotel.domain.HotelBdBind" resultType="com.yimamerchant.system.hotel.domain.HotelBdBind">
+        select b.id as id, b.hotel_id as hotelId, p.hotel_name as hotelName, b.bd_user_id as bdUserId,
+        coalesce(b.bd_user_name, u.nick_name) as bdUserName, u.user_name as bdUserCode, b.bind_status as bindStatus,
+        b.bind_time as bindTime, b.unbind_time as unbindTime, b.remark as remark
+        from hotel_bd_bind b
+        left join hotel_partner p on b.hotel_id = p.hotel_id and p.del_flag = '0'
+        left join sys_user u on b.bd_user_id = u.user_id
+        where b.del_flag = '0'
+        <if test="hotelName != null and hotelName != ''">and p.hotel_name like concat('%', #{hotelName}, '%')</if>
+        <if test="bdUserName != null and bdUserName != ''">and (u.nick_name like concat('%', #{bdUserName}, '%') or u.user_name like concat('%', #{bdUserName}, '%'))</if>
+        <if test="bindStatus != null and bindStatus != ''">and b.bind_status = #{bindStatus}</if>
+        order by b.bind_time desc
+    </select>
+
+    <select id="selectBindByIds" resultType="com.yimamerchant.system.hotel.domain.HotelBdBind">
+        select b.id as id, b.hotel_id as hotelId, p.hotel_name as hotelName, b.bd_user_id as bdUserId,
+        coalesce(b.bd_user_name, u.nick_name) as bdUserName, u.user_name as bdUserCode, b.bind_status as bindStatus,
+        b.bind_time as bindTime, b.unbind_time as unbindTime, b.remark as remark
+        from hotel_bd_bind b
+        left join hotel_partner p on b.hotel_id = p.hotel_id
+        left join sys_user u on b.bd_user_id = u.user_id
+        where b.id in
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
+    <select id="selectActiveBindByHotelId" parameterType="Long" resultType="com.yimamerchant.system.hotel.domain.HotelBdBind">
+        select id as id, hotel_id as hotelId, bd_user_id as bdUserId, bd_user_name as bdUserName,
+        bind_status as bindStatus, bind_time as bindTime, unbind_time as unbindTime, remark as remark
+        from hotel_bd_bind where hotel_id = #{hotelId} and bind_status = 'BOUND' and del_flag = '0' order by id desc limit 1
+    </select>
+
+    <insert id="insertBind" parameterType="com.yimamerchant.system.hotel.domain.HotelBdBind" useGeneratedKeys="true" keyProperty="id">
+        insert into hotel_bd_bind(
+            hotel_id, bd_user_id, bd_user_name, bind_status, bind_time, unbind_time, remark, create_by, create_time, update_by, update_time, del_flag
+        ) values (
+            #{hotelId}, #{bdUserId}, #{bdUserName}, #{bindStatus}, #{bindTime}, #{unbindTime}, #{remark}, #{createBy}, now(), #{createBy}, now(), '0'
+        )
+    </insert>
+
+    <update id="updateBind" parameterType="com.yimamerchant.system.hotel.domain.HotelBdBind">
+        update hotel_bd_bind
+        <set>
+            <if test="bdUserId != null">bd_user_id = #{bdUserId},</if>
+            <if test="bdUserName != null">bd_user_name = #{bdUserName},</if>
+            <if test="bindStatus != null">bind_status = #{bindStatus},</if>
+            <if test="bindTime != null">bind_time = #{bindTime},</if>
+            <if test="unbindTime != null">unbind_time = #{unbindTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = now()
+        </set>
+        where id = #{id}
+    </update>
+
+    <update id="updateBindByHotelIds">
+        update hotel_bd_bind set bind_status = #{status}, remark = #{remark}, update_time = now()
+        where hotel_id in
+        <foreach collection="hotelIds" item="hotelId" open="(" separator="," close=")">
+            #{hotelId}
+        </foreach>
+    </update>
+
+    <select id="selectBindHistoryList" parameterType="com.yimamerchant.system.hotel.domain.HotelBdBindHistory" resultType="com.yimamerchant.system.hotel.domain.HotelBdBindHistory">
+        select h.id as id, h.hotel_id as hotelId, p.hotel_name as hotelName, h.old_bd_user_id as oldBdUserId, h.old_bd_user_name as oldBdUserName,
+        h.new_bd_user_id as newBdUserId, h.new_bd_user_name as newBdUserName, h.operate_type as operateType,
+        h.operate_reason as operateReason, h.operate_user_id as operateUserId, h.operate_user_name as operateUserName,
+        h.operate_time as operateTime, h.remark as remark
+        from hotel_bd_bind_history h
+        left join hotel_partner p on h.hotel_id = p.hotel_id
+        where h.del_flag = '0'
+        order by h.operate_time desc
+    </select>
+
+    <insert id="insertBindHistory" parameterType="com.yimamerchant.system.hotel.domain.HotelBdBindHistory" useGeneratedKeys="true" keyProperty="id">
+        insert into hotel_bd_bind_history(
+            hotel_id, old_bd_user_id, old_bd_user_name, new_bd_user_id, new_bd_user_name, operate_type,
+            operate_reason, operate_user_id, operate_user_name, operate_time, remark, create_by, create_time, update_by, update_time, del_flag
+        ) values (
+            #{hotelId}, #{oldBdUserId}, #{oldBdUserName}, #{newBdUserId}, #{newBdUserName}, #{operateType},
+            #{operateReason}, #{operateUserId}, #{operateUserName}, now(), #{remark}, #{createBy}, now(), #{createBy}, now(), '0'
+        )
+    </insert>
+
+    <select id="selectBdOptions" resultType="com.yimamerchant.system.hotel.domain.HotelOptionVO">
+        select u.user_id as id, u.nick_name as label, u.user_name as subLabel, '' as extra
+        from sys_user u
+        where u.del_flag = '0' and u.status = '0'
+        <if test="keyword != null and keyword != ''">and (u.nick_name like concat('%', #{keyword}, '%') or u.user_name like concat('%', #{keyword}, '%'))</if>
+        order by u.user_id desc
+    </select>
+
+    <select id="selectHotelOptions" resultType="com.yimamerchant.system.hotel.domain.HotelOptionVO">
+        select hotel_id as id, hotel_name as label, bd_user_name as subLabel, cooperate_status as extra
+        from hotel_partner
+        where del_flag = '0'
+        <if test="keyword != null and keyword != ''">and hotel_name like concat('%', #{keyword}, '%')</if>
+        order by hotel_id desc
+    </select>
+
+    <select id="selectHotelInfoList" parameterType="com.yimamerchant.system.hotel.domain.HotelPartner" resultType="com.yimamerchant.system.hotel.domain.HotelPartner">
+        select <include refid="partnerColumns"/>
+        <include refid="partnerJoin"/>
+        <if test="cityName != null and cityName != ''">and p.city_name like concat('%', #{cityName}, '%')</if>
+        <if test="saleStatus != null and saleStatus != ''">and pr.sale_status = #{saleStatus}</if>
+        <if test="serviceTags != null and serviceTags != ''">and pr.service_tags like concat('%', #{serviceTags}, '%')</if>
+        order by p.update_time desc
+    </select>
+
+    <select id="selectHotelInfoById" parameterType="Long" resultType="com.yimamerchant.system.hotel.domain.HotelPartner">
+        select <include refid="partnerColumns"/>
+        <include refid="partnerJoin"/>
+        and p.hotel_id = #{hotelId}
+        limit 1
+    </select>
+
+    <insert id="insertHotelProfile" parameterType="com.yimamerchant.system.hotel.domain.HotelPartner">
+        insert into hotel_profile(
+            hotel_id, hotel_logo, cover_image, hotel_desc, service_tags, traffic_info, customer_service_time,
+            checkin_time, checkout_time, child_policy, pet_policy, cancel_policy, sale_status, remark,
+            create_by, create_time, update_by, update_time, del_flag
+        ) values (
+            #{hotelId}, #{hotelLogo}, #{coverImage}, #{hotelDesc}, #{serviceTags}, #{trafficInfo}, #{customerServiceTime},
+            #{checkinTime}, #{checkoutTime}, #{childPolicy}, #{petPolicy}, #{cancelPolicy}, #{saleStatus}, #{remark},
+            #{createBy}, now(), #{createBy}, now(), '0'
+        )
+    </insert>
+
+    <update id="updateHotelProfile" parameterType="com.yimamerchant.system.hotel.domain.HotelPartner">
+        update hotel_profile
+        <set>
+            <if test="hotelLogo != null">hotel_logo = #{hotelLogo},</if>
+            <if test="coverImage != null">cover_image = #{coverImage},</if>
+            <if test="hotelDesc != null">hotel_desc = #{hotelDesc},</if>
+            <if test="serviceTags != null">service_tags = #{serviceTags},</if>
+            <if test="trafficInfo != null">traffic_info = #{trafficInfo},</if>
+            <if test="customerServiceTime != null">customer_service_time = #{customerServiceTime},</if>
+            <if test="checkinTime != null">checkin_time = #{checkinTime},</if>
+            <if test="checkoutTime != null">checkout_time = #{checkoutTime},</if>
+            <if test="childPolicy != null">child_policy = #{childPolicy},</if>
+            <if test="petPolicy != null">pet_policy = #{petPolicy},</if>
+            <if test="cancelPolicy != null">cancel_policy = #{cancelPolicy},</if>
+            <if test="saleStatus != null">sale_status = #{saleStatus},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = now()
+        </set>
+        where hotel_id = #{hotelId} and del_flag = '0'
+    </update>
+
+    <select id="selectHotelImages" parameterType="Long" resultType="com.yimamerchant.system.hotel.domain.HotelImage">
+        select id as id, hotel_id as hotelId, image_type as imageType, image_url as imageUrl, image_name as imageName,
+        sort_num as sortNum, remark as remark
+        from hotel_profile_image where hotel_id = #{hotelId} and del_flag = '0' order by sort_num asc, id asc
+    </select>
+
+    <delete id="deleteHotelImages" parameterType="Long">
+        update hotel_profile_image set del_flag = '2', update_time = now() where hotel_id = #{hotelId}
+    </delete>
+
+    <insert id="insertHotelImage" parameterType="com.yimamerchant.system.hotel.domain.HotelImage" useGeneratedKeys="true" keyProperty="id">
+        insert into hotel_profile_image(
+            hotel_id, image_type, image_url, image_name, sort_num, remark, create_by, create_time, update_by, update_time, del_flag
+        ) values (
+            #{hotelId}, #{imageType}, #{imageUrl}, #{imageName}, #{sortNum}, #{remark}, #{createBy}, now(), #{createBy}, now(), '0'
+        )
+    </insert>
+
+    <select id="selectHotelChangeLogs" parameterType="Long" resultType="com.yimamerchant.system.hotel.domain.HotelPendingAuditLog">
+        select l.id as id, l.apply_id as applyId, l.operate_type as operateType, l.operate_user_id as operateUserId,
+        l.operate_user_name as operateUserName, l.operate_remark as operateRemark, l.operate_time as operateTime
+        from hotel_partner p
+        inner join hotel_pending_audit_log l on p.source_apply_id = l.apply_id
+        where p.hotel_id = #{hotelId} and l.del_flag = '0'
+        order by l.operate_time desc
+    </select>
+
+    <select id="selectRoomTypeList" parameterType="com.yimamerchant.system.hotel.domain.HotelRoomType" resultType="com.yimamerchant.system.hotel.domain.HotelRoomType">
+        select r.id as id, r.hotel_id as hotelId, p.hotel_name as hotelName, r.room_type_code as roomTypeCode,
+        r.room_type_name as roomTypeName, r.room_type_name_en as roomTypeNameEn, r.adult_count as adultCount,
+        r.child_count as childCount, r.bed_type as bedType, r.bed_desc as bedDesc, r.area_size as areaSize,
+        r.window_status as windowStatus, r.bathroom_type as bathroomType, r.is_smoking as isSmoking,
+        r.is_breakfast as isBreakfast, r.cover_image as coverImage, r.room_desc as roomDesc,
+        r.default_refund_rule as defaultRefundRule, r.min_booking_rooms as minBookingRooms,
+        r.max_booking_rooms as maxBookingRooms, r.min_booking_nights as minBookingNights,
+        r.max_booking_nights as maxBookingNights, r.sale_status as saleStatus, r.sort_num as sortNum,
+        r.remark as remark, r.create_by as createBy, r.create_time as createTime, r.update_by as updateBy, r.update_time as updateTime
+        from hotel_room_type r
+        left join hotel_partner p on r.hotel_id = p.hotel_id
+        where r.del_flag = '0'
+        <if test="hotelId != null">and r.hotel_id = #{hotelId}</if>
+        <if test="roomTypeName != null and roomTypeName != ''">and r.room_type_name like concat('%', #{roomTypeName}, '%')</if>
+        <if test="saleStatus != null and saleStatus != ''">and r.sale_status = #{saleStatus}</if>
+        order by r.sort_num asc, r.id desc
+    </select>
+
+    <select id="selectRoomTypeById" parameterType="Long" resultType="com.yimamerchant.system.hotel.domain.HotelRoomType">
+        select id as id, hotel_id as hotelId, room_type_code as roomTypeCode, room_type_name as roomTypeName,
+        room_type_name_en as roomTypeNameEn, adult_count as adultCount, child_count as childCount, bed_type as bedType,
+        bed_desc as bedDesc, area_size as areaSize, window_status as windowStatus, bathroom_type as bathroomType,
+        is_smoking as isSmoking, is_breakfast as isBreakfast, cover_image as coverImage, room_desc as roomDesc,
+        default_refund_rule as defaultRefundRule, min_booking_rooms as minBookingRooms, max_booking_rooms as maxBookingRooms,
+        min_booking_nights as minBookingNights, max_booking_nights as maxBookingNights, sale_status as saleStatus,
+        sort_num as sortNum, remark as remark, create_by as createBy, create_time as createTime,
+        update_by as updateBy, update_time as updateTime
+        from hotel_room_type where id = #{id} and del_flag = '0'
+    </select>
+
+    <insert id="insertRoomType" parameterType="com.yimamerchant.system.hotel.domain.HotelRoomType" useGeneratedKeys="true" keyProperty="id">
+        insert into hotel_room_type(
+            hotel_id, room_type_code, room_type_name, room_type_name_en, adult_count, child_count, bed_type, bed_desc,
+            area_size, window_status, bathroom_type, is_smoking, is_breakfast, cover_image, room_desc,
+            default_refund_rule, min_booking_rooms, max_booking_rooms, min_booking_nights, max_booking_nights,
+            sale_status, sort_num, remark, create_by, create_time, update_by, update_time, del_flag
+        ) values (
+            #{hotelId}, #{roomTypeCode}, #{roomTypeName}, #{roomTypeNameEn}, #{adultCount}, #{childCount}, #{bedType}, #{bedDesc},
+            #{areaSize}, #{windowStatus}, #{bathroomType}, #{isSmoking}, #{isBreakfast}, #{coverImage}, #{roomDesc},
+            #{defaultRefundRule}, #{minBookingRooms}, #{maxBookingRooms}, #{minBookingNights}, #{maxBookingNights},
+            #{saleStatus}, #{sortNum}, #{remark}, #{createBy}, now(), #{createBy}, now(), '0'
+        )
+    </insert>
+
+    <update id="updateRoomType" parameterType="com.yimamerchant.system.hotel.domain.HotelRoomType">
+        update hotel_room_type
+        <set>
+            <if test="hotelId != null">hotel_id = #{hotelId},</if>
+            <if test="roomTypeName != null">room_type_name = #{roomTypeName},</if>
+            <if test="roomTypeNameEn != null">room_type_name_en = #{roomTypeNameEn},</if>
+            <if test="adultCount != null">adult_count = #{adultCount},</if>
+            <if test="childCount != null">child_count = #{childCount},</if>
+            <if test="bedType != null">bed_type = #{bedType},</if>
+            <if test="bedDesc != null">bed_desc = #{bedDesc},</if>
+            <if test="areaSize != null">area_size = #{areaSize},</if>
+            <if test="windowStatus != null">window_status = #{windowStatus},</if>
+            <if test="bathroomType != null">bathroom_type = #{bathroomType},</if>
+            <if test="isSmoking != null">is_smoking = #{isSmoking},</if>
+            <if test="isBreakfast != null">is_breakfast = #{isBreakfast},</if>
+            <if test="coverImage != null">cover_image = #{coverImage},</if>
+            <if test="roomDesc != null">room_desc = #{roomDesc},</if>
+            <if test="defaultRefundRule != null">default_refund_rule = #{defaultRefundRule},</if>
+            <if test="minBookingRooms != null">min_booking_rooms = #{minBookingRooms},</if>
+            <if test="maxBookingRooms != null">max_booking_rooms = #{maxBookingRooms},</if>
+            <if test="minBookingNights != null">min_booking_nights = #{minBookingNights},</if>
+            <if test="maxBookingNights != null">max_booking_nights = #{maxBookingNights},</if>
+            <if test="saleStatus != null">sale_status = #{saleStatus},</if>
+            <if test="sortNum != null">sort_num = #{sortNum},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = now()
+        </set>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteRoomTypeByIds">
+        update hotel_room_type set del_flag = '2', update_time = now()
+        where id in
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <select id="selectRoomTypeImages" parameterType="Long" resultType="com.yimamerchant.system.hotel.domain.HotelImage">
+        select id as id, room_type_id as roomTypeId, image_url as imageUrl, image_name as imageName, sort_num as sortNum, remark as remark
+        from hotel_room_type_image where room_type_id = #{roomTypeId} and del_flag = '0' order by sort_num asc, id asc
+    </select>
+
+    <delete id="deleteRoomTypeImages" parameterType="Long">
+        update hotel_room_type_image set del_flag = '2', update_time = now() where room_type_id = #{roomTypeId}
+    </delete>
+
+    <insert id="insertRoomTypeImage" parameterType="com.yimamerchant.system.hotel.domain.HotelImage" useGeneratedKeys="true" keyProperty="id">
+        insert into hotel_room_type_image(
+            room_type_id, image_url, image_name, sort_num, remark, create_by, create_time, update_by, update_time, del_flag
+        ) values (
+            #{roomTypeId}, #{imageUrl}, #{imageName}, #{sortNum}, #{remark}, #{createBy}, now(), #{createBy}, now(), '0'
+        )
+    </insert>
+
+    <select id="selectPriceCalendar" resultType="com.yimamerchant.system.hotel.domain.HotelPriceCalendarItem">
+        select c.id as id, c.hotel_id as hotelId, c.room_type_id as roomTypeId, r.room_type_name as roomTypeName,
+        c.biz_date as bizDate, c.week_no as weekNo, c.settlement_price as settlementPrice, c.sale_price as salePrice,
+        c.commission_rate as commissionRate, c.commission_amount as commissionAmount, c.inventory as inventory,
+        c.room_status as roomStatus, c.refund_rule as refundRule, c.special_tag as specialTag, c.is_default_data as isDefaultData
+        from hotel_room_calendar c
+        left join hotel_room_type r on c.room_type_id = r.id
+        where c.del_flag = '0' and c.hotel_id = #{hotelId}
+        <if test="roomTypeIds != null and roomTypeIds.size() > 0">
+            and c.room_type_id in
+            <foreach collection="roomTypeIds" item="roomTypeId" open="(" separator="," close=")">
+                #{roomTypeId}
+            </foreach>
+        </if>
+        and c.biz_date &gt;= #{beginDate} and c.biz_date &lt;= #{endDate}
+        order by c.room_type_id asc, c.biz_date asc
+    </select>
+
+    <select id="selectPriceByRoomTypeAndDate" resultType="com.yimamerchant.system.hotel.domain.HotelPriceCalendarItem">
+        select id as id, hotel_id as hotelId, room_type_id as roomTypeId, biz_date as bizDate, week_no as weekNo,
+        settlement_price as settlementPrice, sale_price as salePrice, commission_rate as commissionRate,
+        commission_amount as commissionAmount, inventory as inventory, room_status as roomStatus,
+        refund_rule as refundRule, special_tag as specialTag, is_default_data as isDefaultData
+        from hotel_room_calendar
+        where room_type_id = #{roomTypeId} and biz_date = #{bizDate} and del_flag = '0'
+        limit 1
+    </select>
+
+    <insert id="insertPriceCalendar" parameterType="com.yimamerchant.system.hotel.domain.HotelPriceCalendarItem" useGeneratedKeys="true" keyProperty="id">
+        insert into hotel_room_calendar(
+            hotel_id, room_type_id, biz_date, week_no, settlement_price, sale_price, commission_rate, commission_amount,
+            inventory, room_status, refund_rule, special_tag, is_default_data, remark, create_by, create_time, update_by, update_time, del_flag
+        ) values (
+            #{hotelId}, #{roomTypeId}, #{bizDate}, #{weekNo}, #{settlementPrice}, #{salePrice}, #{commissionRate}, #{commissionAmount},
+            #{inventory}, #{roomStatus}, #{refundRule}, #{specialTag}, #{isDefaultData}, #{remark}, '', now(), '', now(), '0'
+        )
+    </insert>
+
+    <update id="updatePriceCalendar" parameterType="com.yimamerchant.system.hotel.domain.HotelPriceCalendarItem">
+        update hotel_room_calendar
+        set settlement_price = #{settlementPrice}, sale_price = #{salePrice}, commission_rate = #{commissionRate},
+            commission_amount = #{commissionAmount}, inventory = #{inventory}, room_status = #{roomStatus},
+            refund_rule = #{refundRule}, special_tag = #{specialTag}, update_time = now()
+        where id = #{id}
+    </update>
+
+    <insert id="insertPriceLog" parameterType="com.yimamerchant.system.hotel.domain.HotelRoomCalendarLog" useGeneratedKeys="true" keyProperty="id">
+        insert into hotel_room_calendar_log(
+            calendar_id, hotel_id, room_type_id, biz_date, operate_type, before_json, after_json, operate_user_id,
+            operate_user_name, operate_time, remark, create_by, create_time, update_by, update_time, del_flag
+        ) values (
+            #{calendarId}, #{hotelId}, #{roomTypeId}, #{bizDate}, #{operateType}, #{beforeJson}, #{afterJson}, #{operateUserId},
+            #{operateUserName}, now(), #{remark}, #{createBy}, now(), #{createBy}, now(), '0'
+        )
+    </insert>
+
+    <select id="selectPriceLogList" parameterType="com.yimamerchant.system.hotel.domain.HotelRoomCalendarLog" resultType="com.yimamerchant.system.hotel.domain.HotelRoomCalendarLog">
+        select l.id as id, l.calendar_id as calendarId, l.hotel_id as hotelId, p.hotel_name as hotelName,
+        l.room_type_id as roomTypeId, r.room_type_name as roomTypeName, l.biz_date as bizDate, l.operate_type as operateType,
+        l.before_json as beforeJson, l.after_json as afterJson, l.operate_user_id as operateUserId,
+        l.operate_user_name as operateUserName, l.operate_time as operateTime, l.remark as remark
+        from hotel_room_calendar_log l
+        left join hotel_partner p on l.hotel_id = p.hotel_id
+        left join hotel_room_type r on l.room_type_id = r.id
+        where l.del_flag = '0'
+        <if test="hotelId != null">and l.hotel_id = #{hotelId}</if>
+        <if test="roomTypeId != null">and l.room_type_id = #{roomTypeId}</if>
+        order by l.operate_time desc
+    </select>
+
+    <select id="selectOrderList" parameterType="com.yimamerchant.system.hotel.domain.HotelOrder" resultType="com.yimamerchant.system.hotel.domain.HotelOrder">
+        select id as id, order_no as orderNo, hotel_id as hotelId, hotel_name as hotelName, room_type_id as roomTypeId,
+        room_type_name as roomTypeName, user_id as userId, user_name as userName, user_mobile as userMobile,
+        bd_user_id as bdUserId, checkin_date as checkinDate, checkout_date as checkoutDate, night_count as nightCount,
+        room_count as roomCount, order_amount as orderAmount, tax_amount as taxAmount, discount_amount as discountAmount,
+        pay_amount as payAmount, refund_amount as refundAmount, order_status as orderStatus, refund_status as refundStatus,
+        refund_reason as refundReason, special_request as specialRequest, inner_remark as innerRemark, confirm_time as confirmTime,
+        checkin_time as checkinTime, checkout_time as checkoutTime, cancel_time as cancelTime, cancel_reason as cancelReason,
+        create_by as createBy, create_time as createTime, update_by as updateBy, update_time as updateTime
+        from hotel_order
+        where del_flag = '0'
+        <if test="orderNo != null and orderNo != ''">and order_no = #{orderNo}</if>
+        <if test="hotelId != null">and hotel_id = #{hotelId}</if>
+        <if test="roomTypeId != null">and room_type_id = #{roomTypeId}</if>
+        <if test="orderStatus != null and orderStatus != ''">and order_status = #{orderStatus}</if>
+        <if test="userId != null">and user_id = #{userId}</if>
+        <if test="userMobile != null and userMobile != ''">and user_mobile like concat('%', #{userMobile}, '%')</if>
+        <if test="bdUserId != null">and bd_user_id = #{bdUserId}</if>
+        <if test="beginCreateTime != null and beginCreateTime != ''">and date_format(create_time, '%Y-%m-%d') &gt;= #{beginCreateTime}</if>
+        <if test="endCreateTime != null and endCreateTime != ''">and date_format(create_time, '%Y-%m-%d') &lt;= #{endCreateTime}</if>
+        <if test="beginCheckinDate != null and beginCheckinDate != ''">and date_format(checkin_date, '%Y-%m-%d') &gt;= #{beginCheckinDate}</if>
+        <if test="endCheckinDate != null and endCheckinDate != ''">and date_format(checkin_date, '%Y-%m-%d') &lt;= #{endCheckinDate}</if>
+        order by create_time desc
+    </select>
+
+    <select id="selectOrderByNo" parameterType="String" resultType="com.yimamerchant.system.hotel.domain.HotelOrder">
+        select id as id, order_no as orderNo, hotel_id as hotelId, hotel_name as hotelName, room_type_id as roomTypeId,
+        room_type_name as roomTypeName, user_id as userId, user_name as userName, user_mobile as userMobile,
+        bd_user_id as bdUserId, checkin_date as checkinDate, checkout_date as checkoutDate, night_count as nightCount,
+        room_count as roomCount, order_amount as orderAmount, tax_amount as taxAmount, discount_amount as discountAmount,
+        pay_amount as payAmount, refund_amount as refundAmount, order_status as orderStatus, refund_status as refundStatus,
+        refund_reason as refundReason, special_request as specialRequest, inner_remark as innerRemark, confirm_time as confirmTime,
+        checkin_time as checkinTime, checkout_time as checkoutTime, cancel_time as cancelTime, cancel_reason as cancelReason,
+        create_by as createBy, create_time as createTime, update_by as updateBy, update_time as updateTime
+        from hotel_order where order_no = #{orderNo} and del_flag = '0' limit 1
+    </select>
+
+    <update id="updateOrder" parameterType="com.yimamerchant.system.hotel.domain.HotelOrder">
+        update hotel_order
+        <set>
+            <if test="orderStatus != null">order_status = #{orderStatus},</if>
+            <if test="refundStatus != null">refund_status = #{refundStatus},</if>
+            <if test="refundReason != null">refund_reason = #{refundReason},</if>
+            <if test="innerRemark != null">inner_remark = #{innerRemark},</if>
+            <if test="confirmTime != null">confirm_time = #{confirmTime},</if>
+            <if test="checkinTime != null">checkin_time = #{checkinTime},</if>
+            <if test="checkoutTime != null">checkout_time = #{checkoutTime},</if>
+            <if test="cancelTime != null">cancel_time = #{cancelTime},</if>
+            <if test="cancelReason != null">cancel_reason = #{cancelReason},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = now()
+        </set>
+        where id = #{id}
+    </update>
+
+    <select id="selectOrderGuests" parameterType="String" resultType="com.yimamerchant.system.hotel.domain.HotelOrderGuest">
+        select id as id, order_id as orderId, order_no as orderNo, guest_name as guestName, guest_mobile as guestMobile,
+        certificate_type as certificateType, certificate_no as certificateNo, is_main_guest as isMainGuest, remark as remark
+        from hotel_order_guest where order_no = #{orderNo} and del_flag = '0' order by id asc
+    </select>
+
+    <select id="selectOrderLogs" parameterType="String" resultType="com.yimamerchant.system.hotel.domain.HotelOrderLog">
+        select id as id, order_id as orderId, order_no as orderNo, operate_type as operateType, before_status as beforeStatus,
+        after_status as afterStatus, operate_user_id as operateUserId, operate_user_name as operateUserName,
+        operate_remark as operateRemark, operate_time as operateTime
+        from hotel_order_log where order_no = #{orderNo} and del_flag = '0' order by operate_time desc
+    </select>
+
+    <insert id="insertOrderLog" parameterType="com.yimamerchant.system.hotel.domain.HotelOrderLog" useGeneratedKeys="true" keyProperty="id">
+        insert into hotel_order_log(
+            order_id, order_no, operate_type, before_status, after_status, operate_user_id, operate_user_name,
+            operate_remark, operate_time, create_by, create_time, update_by, update_time, del_flag
+        ) values (
+            #{orderId}, #{orderNo}, #{operateType}, #{beforeStatus}, #{afterStatus}, #{operateUserId}, #{operateUserName},
+            #{operateRemark}, now(), #{createBy}, now(), #{createBy}, now(), '0'
+        )
+    </insert>
+
+    <select id="selectBillList" parameterType="com.yimamerchant.system.hotel.domain.HotelBill" resultType="com.yimamerchant.system.hotel.domain.HotelBill">
+        select id as id, bill_no as billNo, hotel_id as hotelId, hotel_name as hotelName,
+        statement_start_date as statementStartDate, statement_end_date as statementEndDate, order_count as orderCount,
+        room_night_count as roomNightCount, total_room_amount as totalRoomAmount, total_commission_amount as totalCommissionAmount,
+        total_settlement_amount as totalSettlementAmount, bill_status as billStatus, dispute_status as disputeStatus,
+        confirm_time as confirmTime, confirm_user_id as confirmUserId, confirm_user_name as confirmUserName,
+        payment_status as paymentStatus, generate_mode as generateMode, remark as remark, create_by as createBy,
+        create_time as createTime, update_by as updateBy, update_time as updateTime
+        from hotel_bill
+        where del_flag = '0'
+        <if test="hotelId != null">and hotel_id = #{hotelId}</if>
+        <if test="billStatus != null and billStatus != ''">and bill_status = #{billStatus}</if>
+        <if test="beginCreateTime != null and beginCreateTime != ''">and date_format(create_time, '%Y-%m-%d') &gt;= #{beginCreateTime}</if>
+        <if test="endCreateTime != null and endCreateTime != ''">and date_format(create_time, '%Y-%m-%d') &lt;= #{endCreateTime}</if>
+        order by create_time desc
+    </select>
+
+    <select id="selectBillByNo" parameterType="String" resultType="com.yimamerchant.system.hotel.domain.HotelBill">
+        select id as id, bill_no as billNo, hotel_id as hotelId, hotel_name as hotelName,
+        statement_start_date as statementStartDate, statement_end_date as statementEndDate, order_count as orderCount,
+        room_night_count as roomNightCount, total_room_amount as totalRoomAmount, total_commission_amount as totalCommissionAmount,
+        total_settlement_amount as totalSettlementAmount, bill_status as billStatus, dispute_status as disputeStatus,
+        confirm_time as confirmTime, confirm_user_id as confirmUserId, confirm_user_name as confirmUserName,
+        payment_status as paymentStatus, generate_mode as generateMode, remark as remark, create_by as createBy,
+        create_time as createTime, update_by as updateBy, update_time as updateTime
+        from hotel_bill where bill_no = #{billNo} and del_flag = '0' limit 1
+    </select>
+
+    <insert id="insertBill" parameterType="com.yimamerchant.system.hotel.domain.HotelBill" useGeneratedKeys="true" keyProperty="id">
+        insert into hotel_bill(
+            bill_no, hotel_id, hotel_name, statement_start_date, statement_end_date, order_count, room_night_count,
+            total_room_amount, total_commission_amount, total_settlement_amount, bill_status, dispute_status,
+            confirm_time, confirm_user_id, confirm_user_name, payment_status, generate_mode, remark,
+            create_by, create_time, update_by, update_time, del_flag
+        ) values (
+            #{billNo}, #{hotelId}, #{hotelName}, #{statementStartDate}, #{statementEndDate}, #{orderCount}, #{roomNightCount},
+            #{totalRoomAmount}, #{totalCommissionAmount}, #{totalSettlementAmount}, #{billStatus}, #{disputeStatus},
+            #{confirmTime}, #{confirmUserId}, #{confirmUserName}, #{paymentStatus}, #{generateMode}, #{remark},
+            #{createBy}, now(), #{createBy}, now(), '0'
+        )
+    </insert>
+
+    <update id="updateBill" parameterType="com.yimamerchant.system.hotel.domain.HotelBill">
+        update hotel_bill
+        <set>
+            <if test="hotelName != null">hotel_name = #{hotelName},</if>
+            <if test="statementStartDate != null">statement_start_date = #{statementStartDate},</if>
+            <if test="statementEndDate != null">statement_end_date = #{statementEndDate},</if>
+            <if test="orderCount != null">order_count = #{orderCount},</if>
+            <if test="roomNightCount != null">room_night_count = #{roomNightCount},</if>
+            <if test="totalRoomAmount != null">total_room_amount = #{totalRoomAmount},</if>
+            <if test="totalCommissionAmount != null">total_commission_amount = #{totalCommissionAmount},</if>
+            <if test="totalSettlementAmount != null">total_settlement_amount = #{totalSettlementAmount},</if>
+            <if test="billStatus != null">bill_status = #{billStatus},</if>
+            <if test="disputeStatus != null">dispute_status = #{disputeStatus},</if>
+            <if test="confirmTime != null">confirm_time = #{confirmTime},</if>
+            <if test="confirmUserId != null">confirm_user_id = #{confirmUserId},</if>
+            <if test="confirmUserName != null">confirm_user_name = #{confirmUserName},</if>
+            <if test="paymentStatus != null">payment_status = #{paymentStatus},</if>
+            <if test="generateMode != null">generate_mode = #{generateMode},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = now()
+        </set>
+        where bill_no = #{billNo}
+    </update>
+
+    <select id="selectBillOrders" resultType="com.yimamerchant.system.hotel.domain.HotelBillOrder">
+        select id as id, bill_id as billId, bill_no as billNo, order_id as orderId, order_no as orderNo, hotel_id as hotelId,
+        room_type_id as roomTypeId, room_type_name as roomTypeName, checkin_date as checkinDate, checkout_date as checkoutDate,
+        night_count as nightCount, order_amount as orderAmount, commission_amount as commissionAmount, settlement_amount as settlementAmount,
+        remark as remark, create_by as createBy, create_time as createTime, update_by as updateBy, update_time as updateTime
+        from hotel_bill_order where bill_no = #{billNo} and del_flag = '0'
+        <if test="orderNo != null and orderNo != ''">and order_no = #{orderNo}</if>
+        order by id desc
+    </select>
+
+    <delete id="deleteBillOrdersByBillNo" parameterType="String">
+        update hotel_bill_order set del_flag = '2', update_time = now() where bill_no = #{billNo}
+    </delete>
+
+    <insert id="insertBillOrder" parameterType="com.yimamerchant.system.hotel.domain.HotelBillOrder" useGeneratedKeys="true" keyProperty="id">
+        insert into hotel_bill_order(
+            bill_id, bill_no, order_id, order_no, hotel_id, room_type_id, room_type_name, checkin_date, checkout_date,
+            night_count, order_amount, commission_amount, settlement_amount, remark, create_by, create_time, update_by, update_time, del_flag
+        ) values (
+            #{billId}, #{billNo}, #{orderId}, #{orderNo}, #{hotelId}, #{roomTypeId}, #{roomTypeName}, #{checkinDate}, #{checkoutDate},
+            #{nightCount}, #{orderAmount}, #{commissionAmount}, #{settlementAmount}, #{remark}, #{createBy}, now(), #{createBy}, now(), '0'
+        )
+    </insert>
+
+    <select id="selectBillCheckLogs" parameterType="String" resultType="com.yimamerchant.system.hotel.domain.HotelBillCheckLog">
+        select id as id, bill_id as billId, bill_no as billNo, operate_type as operateType, operate_user_id as operateUserId,
+        operate_user_name as operateUserName, operate_remark as operateRemark, operate_time as operateTime
+        from hotel_bill_check_log where bill_no = #{billNo} and del_flag = '0' order by operate_time desc
+    </select>
+
+    <insert id="insertBillCheckLog" parameterType="com.yimamerchant.system.hotel.domain.HotelBillCheckLog" useGeneratedKeys="true" keyProperty="id">
+        insert into hotel_bill_check_log(
+            bill_id, bill_no, operate_type, operate_user_id, operate_user_name, operate_remark, operate_time,
+            create_by, create_time, update_by, update_time, del_flag
+        ) values (
+            #{billId}, #{billNo}, #{operateType}, #{operateUserId}, #{operateUserName}, #{operateRemark}, now(),
+            #{createBy}, now(), #{createBy}, now(), '0'
+        )
+    </insert>
+
+    <select id="selectBillPayments" parameterType="String" resultType="com.yimamerchant.system.hotel.domain.HotelBillPayment">
+        select id as id, bill_id as billId, bill_no as billNo, payment_no as paymentNo, payment_amount as paymentAmount,
+        payment_status as paymentStatus, payment_time as paymentTime, voucher_file_ids as voucherFileIds,
+        invoice_title as invoiceTitle, invoice_tax_no as invoiceTaxNo, bank_account_name as bankAccountName,
+        bank_name as bankName, bank_account_no as bankAccountNo, apply_user_id as applyUserId, apply_user_name as applyUserName,
+        remark as remark, create_by as createBy, create_time as createTime, update_by as updateBy, update_time as updateTime
+        from hotel_bill_payment where bill_no = #{billNo} and del_flag = '0' order by id desc
+    </select>
+
+    <insert id="insertBillPayment" parameterType="com.yimamerchant.system.hotel.domain.HotelBillPayment" useGeneratedKeys="true" keyProperty="id">
+        insert into hotel_bill_payment(
+            bill_id, bill_no, payment_no, payment_amount, payment_status, payment_time, voucher_file_ids,
+            invoice_title, invoice_tax_no, bank_account_name, bank_name, bank_account_no, apply_user_id, apply_user_name,
+            remark, create_by, create_time, update_by, update_time, del_flag
+        ) values (
+            #{billId}, #{billNo}, #{paymentNo}, #{paymentAmount}, #{paymentStatus}, #{paymentTime}, #{voucherFileIds},
+            #{invoiceTitle}, #{invoiceTaxNo}, #{bankAccountName}, #{bankName}, #{bankAccountNo}, #{applyUserId}, #{applyUserName},
+            #{remark}, #{createBy}, now(), #{createBy}, now(), '0'
+        )
+    </insert>
+
+    <select id="selectBusinessConfigs" resultType="com.yimamerchant.system.hotel.domain.HotelBusinessConfig">
+        select id as id, config_key as configKey, config_name as configName, config_group as configGroup,
+        config_value as configValue, config_type as configType, status as status, remark as remark,
+        create_by as createBy, create_time as createTime, update_by as updateBy, update_time as updateTime
+        from hotel_business_config where del_flag = '0' order by config_group asc, id asc
+    </select>
+
+    <select id="selectBusinessConfigByKey" parameterType="String" resultType="com.yimamerchant.system.hotel.domain.HotelBusinessConfig">
+        select id as id, config_key as configKey, config_name as configName, config_group as configGroup,
+        config_value as configValue, config_type as configType, status as status, remark as remark,
+        create_by as createBy, create_time as createTime, update_by as updateBy, update_time as updateTime
+        from hotel_business_config where config_key = #{configKey} and del_flag = '0' limit 1
+    </select>
+
+    <insert id="insertBusinessConfig" parameterType="com.yimamerchant.system.hotel.domain.HotelBusinessConfig" useGeneratedKeys="true" keyProperty="id">
+        insert into hotel_business_config(
+            config_key, config_name, config_group, config_value, config_type, status, remark, create_by, create_time, update_by, update_time, del_flag
+        ) values (
+            #{configKey}, #{configName}, #{configGroup}, #{configValue}, #{configType}, #{status}, #{remark}, #{createBy}, now(), #{createBy}, now(), '0'
+        )
+    </insert>
+
+    <update id="updateBusinessConfig" parameterType="com.yimamerchant.system.hotel.domain.HotelBusinessConfig">
+        update hotel_business_config
+        <set>
+            <if test="configName != null">config_name = #{configName},</if>
+            <if test="configGroup != null">config_group = #{configGroup},</if>
+            <if test="configValue != null">config_value = #{configValue},</if>
+            <if test="configType != null">config_type = #{configType},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = now()
+        </set>
+        where id = #{id}
+    </update>
+
+    <select id="selectBusinessConfigLogs" resultType="com.yimamerchant.system.hotel.domain.HotelBusinessConfigLog">
+        select id as id, config_id as configId, config_key as configKey, before_value as beforeValue, after_value as afterValue,
+        operate_user_id as operateUserId, operate_user_name as operateUserName, operate_time as operateTime,
+        remark as remark, create_by as createBy, create_time as createTime, update_by as updateBy, update_time as updateTime
+        from hotel_business_config_log where del_flag = '0' order by operate_time desc
+    </select>
+
+    <insert id="insertBusinessConfigLog" parameterType="com.yimamerchant.system.hotel.domain.HotelBusinessConfigLog" useGeneratedKeys="true" keyProperty="id">
+        insert into hotel_business_config_log(
+            config_id, config_key, before_value, after_value, operate_user_id, operate_user_name, operate_time,
+            remark, create_by, create_time, update_by, update_time, del_flag
+        ) values (
+            #{configId}, #{configKey}, #{beforeValue}, #{afterValue}, #{operateUserId}, #{operateUserName}, now(),
+            #{remark}, #{createBy}, now(), #{createBy}, now(), '0'
+        )
+    </insert>
+
+</mapper>

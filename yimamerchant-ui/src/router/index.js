@@ -92,6 +92,48 @@ export const constantRoutes = [
 
 // 动态路由，基于用户权限动态去加载
 export const dynamicRoutes = [
+  {
+    path: '/hotel/cooperate/partner',
+    component: Layout,
+    hidden: true,
+    permissions: ['hotel:cooperate:partner:query'],
+    children: [
+      {
+        path: 'detail/:hotelId(\\d+)',
+        component: () => import('@/views/hotel/cooperate/partner/detail'),
+        name: 'HotelPartnerDetail',
+        meta: { title: '合作酒店详情', activeMenu: '/hotel/cooperate/partner' }
+      }
+    ]
+  },
+  {
+    path: '/hotel/operate/info',
+    component: Layout,
+    hidden: true,
+    permissions: ['hotel:operate:info:edit'],
+    children: [
+      {
+        path: 'edit/:hotelId(\\d+)',
+        component: () => import('@/views/hotel/operate/info/edit'),
+        name: 'HotelInfoEdit',
+        meta: { title: '酒店信息编辑', activeMenu: '/hotel/operate/info' }
+      }
+    ]
+  },
+  {
+    path: '/hotel/finance/bill',
+    component: Layout,
+    hidden: true,
+    permissions: ['hotel:finance:bill:query'],
+    children: [
+      {
+        path: 'detail/:billNo',
+        component: () => import('@/views/hotel/finance/bill/detail'),
+        name: 'HotelBillDetail',
+        meta: { title: '账单详情', activeMenu: '/hotel/finance/bill' }
+      }
+    ]
+  },
 
   {
     path: '/system/user-auth',
