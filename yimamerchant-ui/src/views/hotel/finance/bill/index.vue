@@ -16,7 +16,7 @@
       <el-table-column label="订单数" prop="orderCount" />
       <el-table-column label="结算金额" prop="totalSettlementAmount" />
       <el-table-column label="状态" prop="billStatus" />
-      <el-table-column label="操作" width="120"><template slot-scope="scope"><el-button type="text" size="mini" @click="$router.push('/hotel/finance/bill/detail/' + scope.row.billNo)">详情</el-button></template></el-table-column>
+      <el-table-column label="操作" width="120"><template slot-scope="scope"><el-button type="text" size="mini" @click="$router.push('/hotel/finance/bill-detail/' + scope.row.billNo)">详情</el-button></template></el-table-column>
     </el-table>
     <el-dialog title="生成账单" :visible.sync="open" width="500px">
       <el-form :model="form" label-width="90px">

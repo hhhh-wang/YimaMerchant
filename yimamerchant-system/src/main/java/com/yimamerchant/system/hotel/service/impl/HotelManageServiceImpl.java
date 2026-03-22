@@ -120,6 +120,7 @@ public class HotelManageServiceImpl implements IHotelManageService
         partner.setCommissionRate(dto.getCommissionRate());
         partner.setMarkupRate(dto.getMarkupRate());
         partner.setBdUserId(dto.getBdUserId());
+        partner.setAccountStatus("ENABLED");
         partner.setCreateBy(SecurityUtils.getUsername());
         hotelManageMapper.insertPartner(partner);
 
@@ -815,6 +816,7 @@ public class HotelManageServiceImpl implements IHotelManageService
                 entity.setInventory(dto.getInventory());
                 entity.setRefundRule(dto.getRefundRule());
                 entity.setSpecialTag(dto.getSpecialTag());
+                entity.setIsDefaultData(StringUtils.defaultIfBlank(entity.getIsDefaultData(), "0"));
                 entity.setRoomStatus(StringUtils.defaultIfBlank(dto.getRoomStatus(), "OPEN"));
                 entity.setCommissionAmount(calcCommissionAmount(entity.getSettlementPrice(), entity.getSalePrice(), entity.getCommissionRate()));
                 if (old == null) rows += hotelManageMapper.insertPriceCalendar(entity);
@@ -866,7 +868,15 @@ public class HotelManageServiceImpl implements IHotelManageService
         HotelBill bill = new HotelBill();
         bill.setBillNo(billNo);
         bill.setHotelId(dto.getHotelId());
-        if (!orders.isEmpty()) bill.setHotelName(orders.get(0).getHotelName());
+        if (!orders.isEmpty())
+        {
+            bill.setHotelName(orders.get(0).getHotelName());
+        }
+        else
+        {
+            HotelPartner partner = hotelManageMapper.selectPartnerById(dto.getHotelId());
+            if (partner != null) bill.setHotelName(partner.getHotelName());
+        }
         bill.setStatementStartDate(dto.getStatementStartDate());
         bill.setStatementEndDate(dto.getStatementEndDate());
         bill.setOrderCount(orders.size());
@@ -999,6 +1009,8 @@ public class HotelManageServiceImpl implements IHotelManageService
     private void saveBillCheckLog(String billNo, String type, String remark)
     {
         com.yimamerchant.system.hotel.domain.HotelBillCheckLog log = new com.yimamerchant.system.hotel.domain.HotelBillCheckLog();
+        HotelBill bill = hotelManageMapper.selectBillByNo(billNo);
+        if (bill != null) log.setBillId(bill.getId());
         log.setBillNo(billNo);
         log.setOperateType(type);
         log.setOperateUserId(SecurityUtils.getUserId());

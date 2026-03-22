@@ -373,7 +373,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         select h.id as id, h.hotel_id as hotelId, p.hotel_name as hotelName, h.old_bd_user_id as oldBdUserId, h.old_bd_user_name as oldBdUserName,
         h.new_bd_user_id as newBdUserId, h.new_bd_user_name as newBdUserName, h.operate_type as operateType,
         h.operate_reason as operateReason, h.operate_user_id as operateUserId, h.operate_user_name as operateUserName,
-        h.operate_time as operateTime, h.remark as remark
+        h.operate_time as operateTime
         from hotel_bd_bind_history h
         left join hotel_partner p on h.hotel_id = p.hotel_id
         where h.del_flag = '0'
@@ -383,10 +383,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <insert id="insertBindHistory" parameterType="com.yimamerchant.system.hotel.domain.HotelBdBindHistory" useGeneratedKeys="true" keyProperty="id">
         insert into hotel_bd_bind_history(
             hotel_id, old_bd_user_id, old_bd_user_name, new_bd_user_id, new_bd_user_name, operate_type,
-            operate_reason, operate_user_id, operate_user_name, operate_time, remark, create_by, create_time, update_by, update_time, del_flag
+            operate_reason, operate_user_id, operate_user_name, operate_time, create_by, create_time, update_by, update_time, del_flag
         ) values (
             #{hotelId}, #{oldBdUserId}, #{oldBdUserName}, #{newBdUserId}, #{newBdUserName}, #{operateType},
-            #{operateReason}, #{operateUserId}, #{operateUserName}, now(), #{remark}, #{createBy}, now(), #{createBy}, now(), '0'
+            #{operateReason}, #{operateUserId}, #{operateUserName}, now(), #{createBy}, now(), #{createBy}, now(), '0'
         )
     </insert>
 

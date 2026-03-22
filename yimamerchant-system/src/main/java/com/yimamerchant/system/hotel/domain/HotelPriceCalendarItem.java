@@ -22,6 +22,7 @@ public class HotelPriceCalendarItem
     private String refundRule;
     private String specialTag;
     private String isDefaultData;
+    private String remark;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -53,4 +54,6 @@ public class HotelPriceCalendarItem
     public void setSpecialTag(String specialTag) { this.specialTag = specialTag; }
     public String getIsDefaultData() { return isDefaultData; }
     public void setIsDefaultData(String isDefaultData) { this.isDefaultData = isDefaultData; }
+    public String getRemark() { return remark; }
+    public void setRemark(String remark) { this.remark = remark; }
 }

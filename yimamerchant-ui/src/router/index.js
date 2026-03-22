@@ -93,27 +93,27 @@ export const constantRoutes = [
 // 动态路由，基于用户权限动态去加载
 export const dynamicRoutes = [
   {
-    path: '/hotel/cooperate/partner',
+    path: '/hotel/cooperate/partner-detail',
     component: Layout,
     hidden: true,
     permissions: ['hotel:cooperate:partner:query'],
     children: [
       {
-        path: 'detail/:hotelId(\\d+)',
-        component: () => import('@/views/hotel/cooperate/partner/detail'),
+        path: ':hotelId(\\d+)',
+        component: () => import('@/views/hotel/cooperate/partner/detail_fixed'),
         name: 'HotelPartnerDetail',
         meta: { title: '合作酒店详情', activeMenu: '/hotel/cooperate/partner' }
       }
     ]
   },
   {
-    path: '/hotel/operate/info',
+    path: '/hotel/operate/info-edit',
     component: Layout,
     hidden: true,
     permissions: ['hotel:operate:info:edit'],
     children: [
       {
-        path: 'edit/:hotelId(\\d+)',
+        path: ':hotelId(\\d+)',
         component: () => import('@/views/hotel/operate/info/edit'),
         name: 'HotelInfoEdit',
         meta: { title: '酒店信息编辑', activeMenu: '/hotel/operate/info' }
@@ -121,13 +121,13 @@ export const dynamicRoutes = [
     ]
   },
   {
-    path: '/hotel/finance/bill',
+    path: '/hotel/finance/bill-detail',
     component: Layout,
     hidden: true,
     permissions: ['hotel:finance:bill:query'],
     children: [
       {
-        path: 'detail/:billNo',
+        path: ':billNo',
         component: () => import('@/views/hotel/finance/bill/detail'),
         name: 'HotelBillDetail',
         meta: { title: '账单详情', activeMenu: '/hotel/finance/bill' }

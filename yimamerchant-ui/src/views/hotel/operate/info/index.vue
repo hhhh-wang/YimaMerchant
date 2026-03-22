@@ -30,7 +30,7 @@ export default {
   created() { this.getList() },
   methods: {
     getList() { this.loading = true; listHotelInfo(this.queryParams).then(res => { this.list = res.rows || []; this.total = res.total || 0; this.loading = false }) },
-    goEdit(row) { this.$router.push("/hotel/operate/info/edit/" + row.hotelId) },
+    goEdit(row) { this.$router.push("/hotel/operate/info-edit/" + row.hotelId) },
     toggleStatus(row) { updateHotelInfoStatus({ hotelId: row.hotelId, saleStatus: row.saleStatus === "ON_SHELF" ? "OFF_SHELF" : "ON_SHELF" }).then(() => { this.$modal.msgSuccess("更新成功"); this.getList() }) }
   }
 }

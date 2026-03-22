@@ -111,11 +111,15 @@ export function filterDynamicRoutes(routes) {
 }
 
 export const loadView = (view) => {
+  const fixedViewMap = {
+    'hotel/cooperate/partner/index': 'hotel/cooperate/partner/index_fixed'
+  }
+  const resolvedView = fixedViewMap[view] || view
   if (process.env.NODE_ENV === 'development') {
-    return (resolve) => require([`@/views/${view}`], resolve)
+    return (resolve) => require([`@/views/${resolvedView}`], resolve)
   } else {
     // 使用 import 实现生产环境的路由懒加载
-    return () => import(`@/views/${view}`)
+    return () => import(`@/views/${resolvedView}`)
   }
 }
 
