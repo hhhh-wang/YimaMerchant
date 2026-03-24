@@ -112,7 +112,8 @@ export function filterDynamicRoutes(routes) {
 
 export const loadView = (view) => {
   const fixedViewMap = {
-    'hotel/cooperate/partner/index': 'hotel/cooperate/partner/index_fixed'
+    'hotel/cooperate/partner/index': 'hotel/cooperate/partner/index_fixed',
+    'hotel/cooperate/pending/index': 'hotel/cooperate/pending/index_fixed'
   }
   const resolvedView = fixedViewMap[view] || view
   if (process.env.NODE_ENV === 'development') {

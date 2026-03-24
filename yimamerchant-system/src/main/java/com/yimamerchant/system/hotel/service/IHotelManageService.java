@@ -38,6 +38,7 @@ public interface IHotelManageService
     List<HotelPendingApply> selectPendingList(HotelPendingApply query);
     HotelPendingApply selectPendingById(Long id);
     int insertPending(HotelPendingApply entity);
+    int updatePending(HotelPendingApply entity);
     int approvePending(HotelPendingApproveDTO dto);
     int rejectPending(HotelPendingRejectDTO dto);
     int deletePendingByIds(Long[] ids);

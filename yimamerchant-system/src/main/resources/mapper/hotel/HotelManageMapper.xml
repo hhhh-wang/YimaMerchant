@@ -15,10 +15,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         p.markup_rate as markupRate, p.bd_user_id as bdUserId, coalesce(p.bd_user_name, u.nick_name) as bdUserName,
         p.account_status as accountStatus, p.status_reason as statusReason, p.remark as remark, p.create_by as createBy,
         p.create_time as createTime, p.update_by as updateBy, p.update_time as updateTime,
-        pr.hotel_logo as hotelLogo, pr.cover_image as coverImage, pr.hotel_desc as hotelDesc, pr.service_tags as serviceTags,
-        pr.traffic_info as trafficInfo, pr.customer_service_time as customerServiceTime, pr.checkin_time as checkinTime,
-        pr.checkout_time as checkoutTime, pr.child_policy as childPolicy, pr.pet_policy as petPolicy,
-        pr.cancel_policy as cancelPolicy, pr.sale_status as saleStatus, pr.sync_time as syncTime,
+        pr.hotel_logo as hotelLogo, pr.cover_image as coverImage, pr.hotel_desc as hotelDesc, pr.booking_notice as bookingNotice,
+        pr.invoice_notice as invoiceNotice, pr.parking_notice as parkingNotice, pr.business_status as businessStatus,
+        pr.service_tags as serviceTags, pr.traffic_info as trafficInfo, pr.customer_service_time as customerServiceTime,
+        pr.checkin_time as checkinTime, pr.checkout_time as checkoutTime, pr.child_policy as childPolicy,
+        pr.pet_policy as petPolicy, pr.cancel_policy as cancelPolicy, pr.sale_status as saleStatus, pr.sync_time as syncTime,
         ifnull(mo.monthly_order_count, 0) as monthlyOrderCount, ifnull(mo.monthly_sale_amount, 0) as monthlySaleAmount
     </sql>
 
@@ -39,8 +40,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         select id as id, apply_no as applyNo, hotel_name as hotelName, contact_name as contactName, contact_phone as contactPhone,
         province_code as provinceCode, province_name as provinceName, city_code as cityCode, city_name as cityName,
         district_code as districtCode, district_name as districtName, address as address, longitude as longitude,
-        latitude as latitude, business_license_files as businessLicenseFiles, special_license_files as specialLicenseFiles,
-        health_license_files as healthLicenseFiles, apply_remark as applyRemark, apply_status as applyStatus,
+        latitude as latitude, cover_image as coverImage, banner_images as bannerImages, checkin_time as checkinTime,
+        checkout_time as checkoutTime, hotel_desc as hotelDesc, booking_notice as bookingNotice,
+        cancel_policy as cancelPolicy, invoice_notice as invoiceNotice, parking_notice as parkingNotice,
+        business_status as businessStatus, business_license_files as businessLicenseFiles,
+        special_license_files as specialLicenseFiles, health_license_files as healthLicenseFiles, apply_remark as applyRemark, apply_status as applyStatus,
         applicant_id as applicantId, applicant_name as applicantName, apply_time as applyTime, audit_time as auditTime,
         audit_user_id as auditUserId, audit_user_name as auditUserName, reject_reason as rejectReason,
         partner_hotel_id as partnerHotelId, last_operate_time as lastOperateTime, remark as remark,
@@ -58,8 +62,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         select id as id, apply_no as applyNo, hotel_name as hotelName, contact_name as contactName, contact_phone as contactPhone,
         province_code as provinceCode, province_name as provinceName, city_code as cityCode, city_name as cityName,
         district_code as districtCode, district_name as districtName, address as address, longitude as longitude,
-        latitude as latitude, business_license_files as businessLicenseFiles, special_license_files as specialLicenseFiles,
-        health_license_files as healthLicenseFiles, apply_remark as applyRemark, apply_status as applyStatus,
+        latitude as latitude, cover_image as coverImage, banner_images as bannerImages, checkin_time as checkinTime,
+        checkout_time as checkoutTime, hotel_desc as hotelDesc, booking_notice as bookingNotice,
+        cancel_policy as cancelPolicy, invoice_notice as invoiceNotice, parking_notice as parkingNotice,
+        business_status as businessStatus, business_license_files as businessLicenseFiles,
+        special_license_files as specialLicenseFiles, health_license_files as healthLicenseFiles, apply_remark as applyRemark, apply_status as applyStatus,
         applicant_id as applicantId, applicant_name as applicantName, apply_time as applyTime, audit_time as auditTime,
         audit_user_id as auditUserId, audit_user_name as auditUserName, reject_reason as rejectReason,
         partner_hotel_id as partnerHotelId, last_operate_time as lastOperateTime, remark as remark,
@@ -70,14 +77,16 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <insert id="insertPending" parameterType="com.yimamerchant.system.hotel.domain.HotelPendingApply" useGeneratedKeys="true" keyProperty="id">
         insert into hotel_pending_apply(
             apply_no, hotel_name, contact_name, contact_phone, province_code, province_name, city_code, city_name,
-            district_code, district_name, address, longitude, latitude, business_license_files, special_license_files,
-            health_license_files, apply_remark, apply_status, applicant_id, applicant_name, apply_time, last_operate_time,
-            remark, create_by, create_time, update_by, update_time, del_flag
+            district_code, district_name, address, longitude, latitude, cover_image, banner_images, checkin_time,
+            checkout_time, hotel_desc, booking_notice, cancel_policy, invoice_notice, parking_notice, business_status,
+            business_license_files, special_license_files, health_license_files, apply_remark, apply_status, applicant_id,
+            applicant_name, apply_time, last_operate_time, remark, create_by, create_time, update_by, update_time, del_flag
         ) values (
             #{applyNo}, #{hotelName}, #{contactName}, #{contactPhone}, #{provinceCode}, #{provinceName}, #{cityCode}, #{cityName},
-            #{districtCode}, #{districtName}, #{address}, #{longitude}, #{latitude}, #{businessLicenseFiles}, #{specialLicenseFiles},
-            #{healthLicenseFiles}, #{applyRemark}, #{applyStatus}, #{applicantId}, #{applicantName}, #{applyTime}, #{lastOperateTime},
-            #{remark}, #{createBy}, now(), #{createBy}, now(), '0'
+            #{districtCode}, #{districtName}, #{address}, #{longitude}, #{latitude}, #{coverImage}, #{bannerImages}, #{checkinTime},
+            #{checkoutTime}, #{hotelDesc}, #{bookingNotice}, #{cancelPolicy}, #{invoiceNotice}, #{parkingNotice}, #{businessStatus},
+            #{businessLicenseFiles}, #{specialLicenseFiles}, #{healthLicenseFiles}, #{applyRemark}, #{applyStatus}, #{applicantId},
+            #{applicantName}, #{applyTime}, #{lastOperateTime}, #{remark}, #{createBy}, now(), #{createBy}, now(), '0'
         )
     </insert>
 
@@ -96,6 +105,16 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="address != null">address = #{address},</if>
             <if test="longitude != null">longitude = #{longitude},</if>
             <if test="latitude != null">latitude = #{latitude},</if>
+            <if test="coverImage != null">cover_image = #{coverImage},</if>
+            <if test="bannerImages != null">banner_images = #{bannerImages},</if>
+            <if test="checkinTime != null">checkin_time = #{checkinTime},</if>
+            <if test="checkoutTime != null">checkout_time = #{checkoutTime},</if>
+            <if test="hotelDesc != null">hotel_desc = #{hotelDesc},</if>
+            <if test="bookingNotice != null">booking_notice = #{bookingNotice},</if>
+            <if test="cancelPolicy != null">cancel_policy = #{cancelPolicy},</if>
+            <if test="invoiceNotice != null">invoice_notice = #{invoiceNotice},</if>
+            <if test="parkingNotice != null">parking_notice = #{parkingNotice},</if>
+            <if test="businessStatus != null">business_status = #{businessStatus},</if>
             <if test="businessLicenseFiles != null">business_license_files = #{businessLicenseFiles},</if>
             <if test="specialLicenseFiles != null">special_license_files = #{specialLicenseFiles},</if>
             <if test="healthLicenseFiles != null">health_license_files = #{healthLicenseFiles},</if>
@@ -111,7 +130,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="updateBy != null">update_by = #{updateBy},</if>
             update_time = now()
         </set>
-        where id = #{id}
+        where id = #{id} and del_flag = '0'
     </update>
 
     <delete id="deletePendingByIds">
@@ -425,12 +444,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <insert id="insertHotelProfile" parameterType="com.yimamerchant.system.hotel.domain.HotelPartner">
         insert into hotel_profile(
             hotel_id, hotel_logo, cover_image, hotel_desc, service_tags, traffic_info, customer_service_time,
-            checkin_time, checkout_time, child_policy, pet_policy, cancel_policy, sale_status, remark,
-            create_by, create_time, update_by, update_time, del_flag
+            checkin_time, checkout_time, child_policy, pet_policy, cancel_policy, booking_notice, invoice_notice,
+            parking_notice, business_status, sale_status, remark, create_by, create_time, update_by, update_time, del_flag
         ) values (
             #{hotelId}, #{hotelLogo}, #{coverImage}, #{hotelDesc}, #{serviceTags}, #{trafficInfo}, #{customerServiceTime},
-            #{checkinTime}, #{checkoutTime}, #{childPolicy}, #{petPolicy}, #{cancelPolicy}, #{saleStatus}, #{remark},
-            #{createBy}, now(), #{createBy}, now(), '0'
+            #{checkinTime}, #{checkoutTime}, #{childPolicy}, #{petPolicy}, #{cancelPolicy}, #{bookingNotice}, #{invoiceNotice},
+            #{parkingNotice}, #{businessStatus}, #{saleStatus}, #{remark}, #{createBy}, now(), #{createBy}, now(), '0'
         )
     </insert>
 
@@ -448,6 +467,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="childPolicy != null">child_policy = #{childPolicy},</if>
             <if test="petPolicy != null">pet_policy = #{petPolicy},</if>
             <if test="cancelPolicy != null">cancel_policy = #{cancelPolicy},</if>
+            <if test="bookingNotice != null">booking_notice = #{bookingNotice},</if>
+            <if test="invoiceNotice != null">invoice_notice = #{invoiceNotice},</if>
+            <if test="parkingNotice != null">parking_notice = #{parkingNotice},</if>
+            <if test="businessStatus != null">business_status = #{businessStatus},</if>
             <if test="saleStatus != null">sale_status = #{saleStatus},</if>
             <if test="remark != null">remark = #{remark},</if>
             <if test="updateBy != null">update_by = #{updateBy},</if>

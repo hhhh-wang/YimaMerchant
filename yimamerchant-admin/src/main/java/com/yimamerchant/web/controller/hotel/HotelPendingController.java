@@ -53,6 +53,14 @@ public class HotelPendingController extends BaseController
         return toAjax(hotelManageService.insertPending(entity));
     }
 
+    @PreAuthorize("@ss.hasPermi('hotel:cooperate:pending:edit')")
+    @Log(title = "待签约酒店修改", businessType = BusinessType.UPDATE)
+    @PutMapping
+    public AjaxResult edit(@RequestBody HotelPendingApply entity)
+    {
+        return toAjax(hotelManageService.updatePending(entity));
+    }
+
     @PreAuthorize("@ss.hasPermi('hotel:cooperate:pending:audit')")
     @Log(title = "待签约酒店审核通过", businessType = BusinessType.UPDATE)
     @PutMapping("/approve")

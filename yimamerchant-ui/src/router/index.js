@@ -107,6 +107,34 @@ export const dynamicRoutes = [
     ]
   },
   {
+    path: '/hotel/cooperate/pending-add',
+    component: Layout,
+    hidden: true,
+    permissions: ['hotel:cooperate:pending:add'],
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/hotel/cooperate/pending/form'),
+        name: 'HotelPendingAdd',
+        meta: { title: '新增酒店申请', activeMenu: '/hotel/cooperate/pending' }
+      }
+    ]
+  },
+  {
+    path: '/hotel/cooperate/pending-edit',
+    component: Layout,
+    hidden: true,
+    permissions: ['hotel:cooperate:pending:edit'],
+    children: [
+      {
+        path: ':id(\\d+)',
+        component: () => import('@/views/hotel/cooperate/pending/form'),
+        name: 'HotelPendingEdit',
+        meta: { title: '编辑酒店申请', activeMenu: '/hotel/cooperate/pending' }
+      }
+    ]
+  },
+  {
     path: '/hotel/operate/info-edit',
     component: Layout,
     hidden: true,
@@ -114,7 +142,7 @@ export const dynamicRoutes = [
     children: [
       {
         path: ':hotelId(\\d+)',
-        component: () => import('@/views/hotel/operate/info/edit'),
+        component: () => import('@/views/hotel/operate/info/edit_fixed'),
         name: 'HotelInfoEdit',
         meta: { title: '酒店信息编辑', activeMenu: '/hotel/operate/info' }
       }

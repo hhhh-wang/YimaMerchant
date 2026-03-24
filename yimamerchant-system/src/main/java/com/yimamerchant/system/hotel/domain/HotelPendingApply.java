@@ -28,6 +28,16 @@ public class HotelPendingApply extends BaseEntity
     private String address;
     private BigDecimal longitude;
     private BigDecimal latitude;
+    private String coverImage;
+    private String bannerImages;
+    private String checkinTime;
+    private String checkoutTime;
+    private String hotelDesc;
+    private String bookingNotice;
+    private String cancelPolicy;
+    private String invoiceNotice;
+    private String parkingNotice;
+    private String businessStatus;
     private String businessLicenseFiles;
     private String specialLicenseFiles;
     private String healthLicenseFiles;
@@ -81,6 +91,26 @@ public class HotelPendingApply extends BaseEntity
     public void setLongitude(BigDecimal longitude) { this.longitude = longitude; }
     public BigDecimal getLatitude() { return latitude; }
     public void setLatitude(BigDecimal latitude) { this.latitude = latitude; }
+    public String getCoverImage() { return coverImage; }
+    public void setCoverImage(String coverImage) { this.coverImage = coverImage; }
+    public String getBannerImages() { return bannerImages; }
+    public void setBannerImages(String bannerImages) { this.bannerImages = bannerImages; }
+    public String getCheckinTime() { return checkinTime; }
+    public void setCheckinTime(String checkinTime) { this.checkinTime = checkinTime; }
+    public String getCheckoutTime() { return checkoutTime; }
+    public void setCheckoutTime(String checkoutTime) { this.checkoutTime = checkoutTime; }
+    public String getHotelDesc() { return hotelDesc; }
+    public void setHotelDesc(String hotelDesc) { this.hotelDesc = hotelDesc; }
+    public String getBookingNotice() { return bookingNotice; }
+    public void setBookingNotice(String bookingNotice) { this.bookingNotice = bookingNotice; }
+    public String getCancelPolicy() { return cancelPolicy; }
+    public void setCancelPolicy(String cancelPolicy) { this.cancelPolicy = cancelPolicy; }
+    public String getInvoiceNotice() { return invoiceNotice; }
+    public void setInvoiceNotice(String invoiceNotice) { this.invoiceNotice = invoiceNotice; }
+    public String getParkingNotice() { return parkingNotice; }
+    public void setParkingNotice(String parkingNotice) { this.parkingNotice = parkingNotice; }
+    public String getBusinessStatus() { return businessStatus; }
+    public void setBusinessStatus(String businessStatus) { this.businessStatus = businessStatus; }
     public String getBusinessLicenseFiles() { return businessLicenseFiles; }
     public void setBusinessLicenseFiles(String businessLicenseFiles) { this.businessLicenseFiles = businessLicenseFiles; }
     public String getSpecialLicenseFiles() { return specialLicenseFiles; }

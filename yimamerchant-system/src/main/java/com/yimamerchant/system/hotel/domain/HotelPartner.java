@@ -58,7 +58,9 @@ public class HotelPartner extends BaseEntity
     private String endSignDate;
     private String hotelLogo;
     private String coverImage;
+    private String bannerImages;
     private String hotelDesc;
+    private String bookingNotice;
     private String serviceTags;
     private String trafficInfo;
     private String customerServiceTime;
@@ -67,6 +69,9 @@ public class HotelPartner extends BaseEntity
     private String childPolicy;
     private String petPolicy;
     private String cancelPolicy;
+    private String invoiceNotice;
+    private String parkingNotice;
+    private String businessStatus;
     private String saleStatus;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date syncTime;
@@ -146,8 +151,12 @@ public class HotelPartner extends BaseEntity
     public void setHotelLogo(String hotelLogo) { this.hotelLogo = hotelLogo; }
     public String getCoverImage() { return coverImage; }
     public void setCoverImage(String coverImage) { this.coverImage = coverImage; }
+    public String getBannerImages() { return bannerImages; }
+    public void setBannerImages(String bannerImages) { this.bannerImages = bannerImages; }
     public String getHotelDesc() { return hotelDesc; }
     public void setHotelDesc(String hotelDesc) { this.hotelDesc = hotelDesc; }
+    public String getBookingNotice() { return bookingNotice; }
+    public void setBookingNotice(String bookingNotice) { this.bookingNotice = bookingNotice; }
     public String getServiceTags() { return serviceTags; }
     public void setServiceTags(String serviceTags) { this.serviceTags = serviceTags; }
     public String getTrafficInfo() { return trafficInfo; }
@@ -164,6 +173,12 @@ public class HotelPartner extends BaseEntity
     public void setPetPolicy(String petPolicy) { this.petPolicy = petPolicy; }
     public String getCancelPolicy() { return cancelPolicy; }
     public void setCancelPolicy(String cancelPolicy) { this.cancelPolicy = cancelPolicy; }
+    public String getInvoiceNotice() { return invoiceNotice; }
+    public void setInvoiceNotice(String invoiceNotice) { this.invoiceNotice = invoiceNotice; }
+    public String getParkingNotice() { return parkingNotice; }
+    public void setParkingNotice(String parkingNotice) { this.parkingNotice = parkingNotice; }
+    public String getBusinessStatus() { return businessStatus; }
+    public void setBusinessStatus(String businessStatus) { this.businessStatus = businessStatus; }
     public String getSaleStatus() { return saleStatus; }
     public void setSaleStatus(String saleStatus) { this.saleStatus = saleStatus; }
     public Date getSyncTime() { return syncTime; }

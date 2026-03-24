@@ -25,6 +25,16 @@ CREATE TABLE `hotel_pending_apply`  (
   `address` varchar(255) DEFAULT NULL COMMENT '详细地址',
   `longitude` decimal(12, 6) DEFAULT NULL COMMENT '经度',
   `latitude` decimal(12, 6) DEFAULT NULL COMMENT '纬度',
+  `cover_image` varchar(255) DEFAULT NULL COMMENT '酒店封面图',
+  `banner_images` text COMMENT '酒店轮播图，多个逗号分隔',
+  `checkin_time` varchar(16) DEFAULT NULL COMMENT '入住时间',
+  `checkout_time` varchar(16) DEFAULT NULL COMMENT '离店时间',
+  `hotel_desc` text COMMENT '酒店简介',
+  `booking_notice` text COMMENT '预订须知',
+  `cancel_policy` text COMMENT '取消规则说明',
+  `invoice_notice` text COMMENT '开票说明',
+  `parking_notice` text COMMENT '停车说明',
+  `business_status` varchar(32) NOT NULL DEFAULT 'OPEN' COMMENT '酒店经营状态：OPEN/SUSPENDED/PREPARING',
   `business_license_files` varchar(500) DEFAULT NULL COMMENT '营业执照附件ID集合',
   `special_license_files` varchar(500) DEFAULT NULL COMMENT '特种行业许可证附件ID集合',
   `health_license_files` varchar(500) DEFAULT NULL COMMENT '卫生许可证附件ID集合',
@@ -238,6 +248,10 @@ CREATE TABLE `hotel_profile`  (
   `hotel_logo` varchar(255) DEFAULT NULL COMMENT '酒店LOGO',
   `cover_image` varchar(255) DEFAULT NULL COMMENT '封面图',
   `hotel_desc` text COMMENT '酒店描述',
+  `booking_notice` text COMMENT '预订须知',
+  `invoice_notice` text COMMENT '开票说明',
+  `parking_notice` text COMMENT '停车说明',
+  `business_status` varchar(32) NOT NULL DEFAULT 'OPEN' COMMENT '酒店经营状态：OPEN/SUSPENDED/PREPARING',
   `service_tags` varchar(500) DEFAULT NULL COMMENT '设施服务标签',
   `traffic_info` varchar(500) DEFAULT NULL COMMENT '交通指引',
   `customer_service_time` varchar(64) DEFAULT NULL COMMENT '客服时间',
@@ -266,7 +280,7 @@ DROP TABLE IF EXISTS `hotel_profile_image`;
 CREATE TABLE `hotel_profile_image`  (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `hotel_id` bigint NOT NULL COMMENT '酒店ID',
-  `image_type` varchar(32) NOT NULL COMMENT '图片类型：COVER/APPEARANCE/ROOM/FACILITY/OTHER',
+  `image_type` varchar(32) NOT NULL COMMENT '图片类型：BANNER/COVER/APPEARANCE/ROOM/FACILITY/OTHER',
   `image_url` varchar(255) NOT NULL COMMENT '图片地址',
   `image_name` varchar(128) DEFAULT NULL COMMENT '图片名称',
   `sort_num` int NOT NULL DEFAULT 0 COMMENT '排序号',
@@ -713,6 +727,7 @@ INSERT INTO `sys_menu` VALUES ('2602', '待签约新增', '2101', '2', '#', '', 
 INSERT INTO `sys_menu` VALUES ('2603', '待签约审核', '2101', '3', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:cooperate:pending:audit', '#', 'admin', sysdate(), '', NULL, '待签约酒店审核');
 INSERT INTO `sys_menu` VALUES ('2604', '待签约删除', '2101', '4', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:cooperate:pending:remove', '#', 'admin', sysdate(), '', NULL, '待签约酒店删除');
 INSERT INTO `sys_menu` VALUES ('2605', '待签约导出', '2101', '5', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:cooperate:pending:export', '#', 'admin', sysdate(), '', NULL, '待签约酒店导出');
+INSERT INTO `sys_menu` VALUES ('2606', '待签约修改', '2101', '6', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:cooperate:pending:edit', '#', 'admin', sysdate(), '', NULL, '待签约酒店修改');
 
 INSERT INTO `sys_menu` VALUES ('2611', '合作酒店查询', '2102', '1', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:cooperate:partner:query', '#', 'admin', sysdate(), '', NULL, '合作酒店查询');
 INSERT INTO `sys_menu` VALUES ('2612', '合作酒店修改', '2102', '2', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:cooperate:partner:edit', '#', 'admin', sysdate(), '', NULL, '合作酒店修改');
@@ -766,24 +781,4 @@ INSERT INTO `sys_menu` VALUES ('2675', '重新核算', '2401', '5', '#', '', '',
 INSERT INTO `sys_menu` VALUES ('2676', '发起付款', '2401', '6', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:finance:bill:payment', '#', 'admin', sysdate(), '', NULL, '发起付款');
 INSERT INTO `sys_menu` VALUES ('2677', '账单导出', '2401', '7', '#', '', '', '', 1, 0, 'F', '0', '0', 'hotel:finance:bill:export', '#', 'admin', sysdate(), '', NULL, '账单导出');
 
--- ----------------------------
--- 管理员角色授权（酒店业务）
--- 说明：默认授权给超级管理员角色 role_id=1
--- ----------------------------
-INSERT INTO `sys_role_menu` (`role_id`, `menu_id`) VALUES
-(1, 2000),(1, 2001),(1, 2002),(1, 2003),(1, 2004),(1, 2005),
-(1, 2101),(1, 2102),(1, 2103),(1, 2104),
-(1, 2201),(1, 2202),(1, 2203),
-(1, 2301),
-(1, 2401),
-(1, 2501),(1, 2502),(1, 2503),
-(1, 2601),(1, 2602),(1, 2603),(1, 2604),(1, 2605),
-(1, 2611),(1, 2612),(1, 2613),(1, 2614),(1, 2615),
-(1, 2621),(1, 2622),(1, 2623),(1, 2624),(1, 2625),
-(1, 2631),(1, 2632),(1, 2633),(1, 2634),(1, 2635),
-(1, 2641),(1, 2642),(1, 2643),(1, 2644),(1, 2645),(1, 2646),(1, 2647),
-(1, 2651),(1, 2652),(1, 2653),(1, 2654),(1, 2655),(1, 2656),(1, 2657),
-(1, 2661),(1, 2662),(1, 2663),(1, 2664),(1, 2665),(1, 2666),(1, 2667),(1, 2668),(1, 2669),
-(1, 2671),(1, 2672),(1, 2673),(1, 2674),(1, 2675),(1, 2676),(1, 2677);
 
-SET FOREIGN_KEY_CHECKS = 1;

@@ -82,11 +82,25 @@ public class HotelManageServiceImpl implements IHotelManageService
         entity.setApplyStatus("PENDING");
         entity.setApplicantId(SecurityUtils.getUserId());
         entity.setApplicantName(SecurityUtils.getUsername());
+        entity.setBusinessStatus(StringUtils.defaultIfBlank(entity.getBusinessStatus(), "OPEN"));
         entity.setApplyTime(now);
         entity.setLastOperateTime(now);
         entity.setCreateBy(SecurityUtils.getUsername());
         int rows = hotelManageMapper.insertPending(entity);
         if (rows > 0) savePendingLog(entity.getId(), "SUBMIT", entity.getApplyRemark());
+        return rows;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int updatePending(HotelPendingApply entity)
+    {
+        HotelPendingApply old = hotelManageMapper.selectPendingById(entity.getId());
+        if (old == null || "APPROVED".equals(old.getApplyStatus())) return 0;
+        entity.setLastOperateTime(DateUtils.getNowDate());
+        entity.setUpdateBy(SecurityUtils.getUsername());
+        int rows = hotelManageMapper.updatePending(entity);
+        if (rows > 0) savePendingLog(entity.getId(), "UPDATE", "编辑申请");
         return rows;
     }
 
@@ -111,6 +125,16 @@ public class HotelManageServiceImpl implements IHotelManageService
         partner.setAddress(apply.getAddress());
         partner.setLongitude(apply.getLongitude());
         partner.setLatitude(apply.getLatitude());
+        partner.setCoverImage(apply.getCoverImage());
+        partner.setHotelDesc(apply.getHotelDesc());
+        partner.setBookingNotice(apply.getBookingNotice());
+        partner.setCancelPolicy(apply.getCancelPolicy());
+        partner.setInvoiceNotice(apply.getInvoiceNotice());
+        partner.setParkingNotice(apply.getParkingNotice());
+        partner.setBusinessStatus(StringUtils.defaultIfBlank(apply.getBusinessStatus(), "OPEN"));
+        partner.setCheckinTime(apply.getCheckinTime());
+        partner.setCheckoutTime(apply.getCheckoutTime());
+        partner.setSaleStatus("OFF_SHELF");
         partner.setCooperateStatus("NORMAL");
         partner.setSourceApplyId(apply.getId());
         partner.setSignDate(now);
@@ -123,6 +147,8 @@ public class HotelManageServiceImpl implements IHotelManageService
         partner.setAccountStatus("ENABLED");
         partner.setCreateBy(SecurityUtils.getUsername());
         hotelManageMapper.insertPartner(partner);
+        hotelManageMapper.insertHotelProfile(partner);
+        saveHotelImages(partner.getHotelId(), buildBannerImages(apply.getBannerImages()));
 
         HotelContract contract = new HotelContract();
         contract.setHotelId(partner.getHotelId());
@@ -377,7 +403,12 @@ public class HotelManageServiceImpl implements IHotelManageService
     public HotelPartner selectHotelInfoById(Long hotelId)
     {
         HotelPartner entity = hotelManageMapper.selectHotelInfoById(hotelId);
-        if (entity != null) entity.setImageList(hotelManageMapper.selectHotelImages(hotelId));
+        if (entity != null)
+        {
+            List<HotelImage> images = hotelManageMapper.selectHotelImages(hotelId);
+            entity.setImageList(images);
+            entity.setBannerImages(images.stream().map(HotelImage::getImageUrl).filter(StringUtils::isNotBlank).collect(Collectors.joining(",")));
+        }
         return entity;
     }
 
@@ -392,8 +423,10 @@ public class HotelManageServiceImpl implements IHotelManageService
             entity.setCooperateStatus(StringUtils.defaultIfBlank(entity.getCooperateStatus(), "NORMAL"));
             hotelManageMapper.insertPartner(entity);
         }
+        entity.setBusinessStatus(StringUtils.defaultIfBlank(entity.getBusinessStatus(), "OPEN"));
+        entity.setSaleStatus(StringUtils.defaultIfBlank(entity.getSaleStatus(), "OFF_SHELF"));
         hotelManageMapper.insertHotelProfile(entity);
-        saveHotelImages(entity.getHotelId(), entity.getImageList());
+        saveHotelImages(entity.getHotelId(), mergeBannerImages(entity));
         return 1;
     }
 
@@ -402,13 +435,15 @@ public class HotelManageServiceImpl implements IHotelManageService
     public int updateHotelInfo(HotelPartner entity)
     {
         entity.setUpdateBy(SecurityUtils.getUsername());
+        entity.setBusinessStatus(StringUtils.defaultIfBlank(entity.getBusinessStatus(), "OPEN"));
         hotelManageMapper.updatePartner(entity);
         if (hotelManageMapper.updateHotelProfile(entity) == 0)
         {
             entity.setCreateBy(SecurityUtils.getUsername());
+            entity.setSaleStatus(StringUtils.defaultIfBlank(entity.getSaleStatus(), "OFF_SHELF"));
             hotelManageMapper.insertHotelProfile(entity);
         }
-        saveHotelImages(entity.getHotelId(), entity.getImageList());
+        saveHotelImages(entity.getHotelId(), mergeBannerImages(entity));
         return 1;
     }
 
@@ -970,11 +1005,37 @@ public class HotelManageServiceImpl implements IHotelManageService
         int sort = 1;
         for (HotelImage image : imageList)
         {
+            if (StringUtils.isBlank(image.getImageUrl())) continue;
             image.setHotelId(hotelId);
+            image.setImageType(StringUtils.defaultIfBlank(image.getImageType(), "BANNER"));
             image.setSortNum(image.getSortNum() == null ? sort++ : image.getSortNum());
             image.setCreateBy(SecurityUtils.getUsername());
             hotelManageMapper.insertHotelImage(image);
         }
+    }
+
+    private List<HotelImage> mergeBannerImages(HotelPartner entity)
+    {
+        if (entity.getImageList() != null && !entity.getImageList().isEmpty()) return entity.getImageList();
+        return buildBannerImages(entity.getBannerImages());
+    }
+
+    private List<HotelImage> buildBannerImages(String bannerImages)
+    {
+        if (StringUtils.isBlank(bannerImages)) return Collections.emptyList();
+        java.util.ArrayList<HotelImage> result = new java.util.ArrayList<>();
+        int sort = 1;
+        for (String item : bannerImages.split(","))
+        {
+            if (StringUtils.isBlank(item)) continue;
+            HotelImage image = new HotelImage();
+            image.setImageType("BANNER");
+            image.setImageUrl(item.trim());
+            image.setImageName(item.trim());
+            image.setSortNum(sort++);
+            result.add(image);
+        }
+        return result;
     }
 
     private void saveRoomImages(Long roomTypeId, List<HotelImage> imageList)
