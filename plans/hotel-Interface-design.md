@@ -4,6 +4,13 @@
 
 本文档基于 [`plans/酒店.md`](plans/酒店.md) 的业务规划内容，结合当前项目的若依前后端分离基础结构，输出酒店业务模块的技术接口设计方案。
 
+本次更新说明：
+
+- 本文档已按 `YimaMerchant` 当前仓库中的真实代码结构校正
+- 文档中的“建议”与“规划”仍保留用于表达演进方向
+- 但所有接口、目录、SQL、页面描述以当前已落地代码为主
+- 对尚未完整实现或仅做骨架处理的能力，文档中单独标注“当前缺口”
+
 默认技术前提如下：
 
 - 前端：Vue2 + Element UI + 若依标准列表/表单/详情页模式
@@ -49,9 +56,17 @@
 
 ### 2.2 建议代码分层
 
+当前代码现状补充：
+
+- 前端酒店模块目录和 API 目录已经全部创建，不再是纯建议态
+- 后端酒店模块控制器已经全部创建，并统一落在 `web/controller/hotel`
+- 当前业务实现并不是按子域拆分多个 service，而是统一收敛到 `IHotelManageService`
+- 当前 mapper 也不是多 mapper 结构，而是统一使用 `HotelManageMapper + HotelManageMapper.xml`
+
 #### 前端目录建议
 
 - [`yimamerchant-ui/src/views/hotel/cooperate/pending/index.vue`](yimamerchant-ui/src/views/hotel/cooperate/pending/index.vue)
+- [`yimamerchant-ui/src/views/hotel/cooperate/pending/form.vue`](yimamerchant-ui/src/views/hotel/cooperate/pending/form.vue)
 - [`yimamerchant-ui/src/views/hotel/cooperate/partner/index.vue`](yimamerchant-ui/src/views/hotel/cooperate/partner/index.vue)
 - [`yimamerchant-ui/src/views/hotel/cooperate/partner/detail.vue`](yimamerchant-ui/src/views/hotel/cooperate/partner/detail.vue)
 - [`yimamerchant-ui/src/views/hotel/cooperate/bind/index.vue`](yimamerchant-ui/src/views/hotel/cooperate/bind/index.vue)
@@ -63,6 +78,15 @@
 - [`yimamerchant-ui/src/views/hotel/finance/bill/index.vue`](yimamerchant-ui/src/views/hotel/finance/bill/index.vue)
 - [`yimamerchant-ui/src/views/hotel/finance/bill/detail.vue`](yimamerchant-ui/src/views/hotel/finance/bill/detail.vue)
 - [`yimamerchant-ui/src/views/hotel/config/index.vue`](yimamerchant-ui/src/views/hotel/config/index.vue)
+
+当前仓库还存在以下备份/修正版页面文件：
+
+- [`yimamerchant-ui/src/views/hotel/cooperate/pending/index_fixed.vue`](yimamerchant-ui/src/views/hotel/cooperate/pending/index_fixed.vue)
+- [`yimamerchant-ui/src/views/hotel/cooperate/partner/index_fixed.vue`](yimamerchant-ui/src/views/hotel/cooperate/partner/index_fixed.vue)
+- [`yimamerchant-ui/src/views/hotel/cooperate/partner/detail_fixed.vue`](yimamerchant-ui/src/views/hotel/cooperate/partner/detail_fixed.vue)
+- [`yimamerchant-ui/src/views/hotel/operate/info/edit_fixed.vue`](yimamerchant-ui/src/views/hotel/operate/info/edit_fixed.vue)
+
+这些文件目前更适合视为备份或替代稿，不建议纳入主功能文档口径。
 
 #### 前端 API 目录建议
 
@@ -82,15 +106,26 @@
 
 业务代码建议放在 [`yimamerchant-system/src/main/java/com/yimamerchant/system/hotel`](yimamerchant-system/src/main/java/com/yimamerchant/system/hotel)。
 
-推荐分层：
+当前已存在的真实分层：
 
-- controller
 - domain
 - dto
-- vo
 - mapper
 - service
 - service.impl
+
+当前已存在的关键实现文件：
+
+- [`IHotelManageService`](yimamerchant-system/src/main/java/com/yimamerchant/system/hotel/service/IHotelManageService.java)
+- [`HotelManageServiceImpl`](yimamerchant-system/src/main/java/com/yimamerchant/system/hotel/service/impl/HotelManageServiceImpl.java)
+- [`HotelManageMapper`](yimamerchant-system/src/main/java/com/yimamerchant/system/hotel/mapper/HotelManageMapper.java)
+- [`HotelManageMapper.xml`](yimamerchant-system/src/main/resources/mapper/hotel/HotelManageMapper.xml)
+
+说明：
+
+- 当前酒店全部子模块共用一个聚合 Service
+- 当前酒店全部 SQL 查询共用一个聚合 Mapper XML
+- 文档后续接口说明默认按这一真实实现结构展开
 
 ---
 
@@ -1102,6 +1137,34 @@ XML 建议放在 [`yimamerchant-system/src/main/resources/mapper/hotel`](yimamer
 - 房价日历批量查询
 - 合作酒店详情聚合
 
+## 6.4 当前实现状态与缺口
+
+结合当前代码，酒店模块并非空白设计稿，而是已完成一套可运行骨架。当前状态建议按以下口径理解：
+
+### 已落地能力
+
+- 酒店合作、酒店运营、订单、账单、配置模块的 Controller 已全部创建
+- 前端页面与 `src/api/hotel/**` 调用层已全部创建
+- `sql/hotel.sql` 已覆盖 22 张酒店业务表
+- `HotelManageServiceImpl` 已实现核心增删改查和部分联动逻辑
+- `HotelManageMapper.xml` 已完成大部分基础查询、写入和日志留痕 SQL
+
+### 当前缺口
+
+- [`HotelPartnerController.resetPassword()`](yimamerchant-admin/src/main/java/com/yimamerchant/web/controller/hotel/HotelPartnerController.java:1) 当前只做账号存在判断，没有真正重置密码
+- [`HotelBillController.export()`](yimamerchant-admin/src/main/java/com/yimamerchant/web/controller/hotel/HotelBillController.java:1) 当前未输出 Excel，仅返回列表数据
+- [`HotelInfoController.changeLog()`](yimamerchant-admin/src/main/java/com/yimamerchant/web/controller/hotel/HotelInfoController.java:1) 当前读取的是申请审核日志，不是独立的酒店资料变更日志
+- 账单统计当前复用了 [`HotelPartnerStatistics`](yimamerchant-system/src/main/java/com/yimamerchant/system/hotel/domain/HotelPartnerStatistics.java:1)，字段语义与账单统计并不完全匹配
+- 审核通过时虽然创建了 `hotel_account`，但未同步创建若依 `sys_user` 登录账号，酒店账号体系仍未闭环
+- 价格日历查询当前使用 `month + "-31"` 作为结束日期，属于简化实现，不够严谨
+- 多数 DTO 和 Domain 尚未加参数校验注解，当前主要依赖前端控制输入合法性
+
+### 当前架构风险
+
+- 单一 `IHotelManageService` 承担全部酒店子域逻辑，后续继续扩展会明显增大维护成本
+- 单一 `HotelManageMapper.xml` 已经覆盖合作、运营、订单、账单、配置五类 SQL，后续复杂度会继续上升
+- 多个接口已经具备业务语义，但部分能力仍是“业务骨架 + 简化落地”，文档中不应再按“完整闭环”口径描述
+
 ---
 
 ## 7. 权限与字典建议
@@ -1183,3 +1246,9 @@ SQL 脚本应包含：
 - 模块代码如何组织
 
 后续开发可基于本文档继续细化 Controller、Service、Mapper、Vue 页面和权限菜单配置。
+
+补充说明：
+
+- 当前仓库已经完成了酒店模块的第一版管理端骨架
+- 后续文档和开发评审应以“已实现骨架 + 持续补强”作为统一判断口径
+- 不建议再将本模块描述为纯规划态或完全未落地状态
